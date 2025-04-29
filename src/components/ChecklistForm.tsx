@@ -23,6 +23,7 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
   const [justification, setJustification] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
   const [actionPlan, setActionPlan] = useState("");
+  const [showJustificationDialog, setShowJustificationDialog] = useState(false);
   const [showActionPlanDialog, setShowActionPlanDialog] = useState(false);
 
   // Find the template title
@@ -33,9 +34,9 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
     setSelectedItem(item);
     
     if (status === "nao") {
-      // Show justification dialog
+      // Show justification dialog only for "nao" status
       setJustification("");
-      setShowActionPlanDialog(true);
+      setShowJustificationDialog(true);
     } else {
       // For "sim" status, update immediately
       onUpdateItem(item.id, status);
@@ -72,7 +73,8 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
     
     onUpdateItem(selectedItem.id, "nao", justification);
     
-    // Show action plan dialog
+    // Close justification dialog and open action plan dialog
+    setShowJustificationDialog(false);
     setActionPlan("");
     setShowActionPlanDialog(true);
   };
@@ -91,6 +93,7 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
     
     onAddActionPlan(selectedItem.id, actionPlan);
     setShowActionPlanDialog(false);
+    setSelectedItem(null);
   };
 
   const handleDeferActionPlan = () => {
@@ -99,6 +102,7 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
       description: "Você tem 2 dias para preencher o plano de ação",
     });
     setShowActionPlanDialog(false);
+    setSelectedItem(null);
   };
 
   const getItemStatusColor = (item: ChecklistItem) => {
@@ -230,7 +234,7 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
       </Card>
 
       {/* Justification Dialog */}
-      <Dialog open={selectedItem !== null && selectedItem.status !== "sim" && !showActionPlanDialog} onOpenChange={() => setSelectedItem(null)}>
+      <Dialog open={showJustificationDialog} onOpenChange={setShowJustificationDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
