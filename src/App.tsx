@@ -17,67 +17,74 @@ import ActionPlansPage from "./pages/ActionPlansPage";
 import AdminPage from "./pages/AdminPage";
 import LessonsPage from "./pages/LessonsPage";
 import NotAuthorizedPage from "./pages/NotAuthorizedPage";
+import Index from "./pages/Index";
 
+// Create a new client
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ChecklistProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<LoginPage />} />
-              
-              {/* Protected routes for all authenticated users */}
-              <Route path="/dashboard" element={
-                <PrivateRoute>
-                  <DashboardPage />
-                </PrivateRoute>
-              } />
-              
-              <Route path="/checklist/:id" element={
-                <PrivateRoute>
-                  <ChecklistPage />
-                </PrivateRoute>
-              } />
-              
-              <Route path="/action-plans" element={
-                <PrivateRoute>
-                  <ActionPlansPage />
-                </PrivateRoute>
-              } />
-              
-              {/* Admin-only routes */}
-              <Route path="/admin" element={
-                <PrivateRoute roles={["admin"]}>
-                  <AdminPage />
-                </PrivateRoute>
-              } />
-              
-              <Route path="/manage-users" element={
-                <PrivateRoute roles={["admin"]}>
-                  <AdminPage />
-                </PrivateRoute>
-              } />
-              
-              <Route path="/lessons" element={
-                <PrivateRoute roles={["admin"]}>
-                  <LessonsPage />
-                </PrivateRoute>
-              } />
-              
-              {/* Error pages */}
-              <Route path="/not-authorized" element={<NotAuthorizedPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ChecklistProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ChecklistProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/" element={<LoginPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  
+                  {/* Protected routes for all authenticated users */}
+                  <Route path="/dashboard" element={
+                    <PrivateRoute>
+                      <DashboardPage />
+                    </PrivateRoute>
+                  } />
+                  
+                  <Route path="/checklist/:id" element={
+                    <PrivateRoute>
+                      <ChecklistPage />
+                    </PrivateRoute>
+                  } />
+                  
+                  <Route path="/action-plans" element={
+                    <PrivateRoute>
+                      <ActionPlansPage />
+                    </PrivateRoute>
+                  } />
+                  
+                  {/* Admin-only routes */}
+                  <Route path="/admin" element={
+                    <PrivateRoute roles={["admin"]}>
+                      <AdminPage />
+                    </PrivateRoute>
+                  } />
+                  
+                  <Route path="/manage-users" element={
+                    <PrivateRoute roles={["admin"]}>
+                      <AdminPage />
+                    </PrivateRoute>
+                  } />
+                  
+                  <Route path="/lessons" element={
+                    <PrivateRoute roles={["admin"]}>
+                      <LessonsPage />
+                    </PrivateRoute>
+                  } />
+                  
+                  {/* Error pages */}
+                  <Route path="/not-authorized" element={<NotAuthorizedPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </ChecklistProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+};
 
 export default App;
