@@ -6,25 +6,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { LogIn } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
-interface LoginFormProps {
+interface RegisterFormProps {
   onToggleForm: () => void;
 }
 
-export function LoginForm({ onToggleForm }: LoginFormProps) {
+export function RegisterForm({ onToggleForm }: RegisterFormProps) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      // Use toast here in a real app
+      alert("As senhas não coincidem");
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
+      const success = await register(name, email, password);
       if (success) {
         navigate("/dashboard");
       }
@@ -36,13 +45,24 @@ export function LoginForm({ onToggleForm }: LoginFormProps) {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Casca Check Vista</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center">Criar Conta</CardTitle>
         <CardDescription className="text-center">
-          Entre com suas credenciais para acessar o sistema
+          Preencha os campos abaixo para criar sua conta
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome Completo</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="Seu nome completo"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -55,12 +75,7 @@ export function LoginForm({ onToggleForm }: LoginFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Senha</Label>
-              <Button type="button" variant="link" className="px-0 font-normal h-auto">
-                Esqueceu a senha?
-              </Button>
-            </div>
+            <Label htmlFor="password">Senha</Label>
             <Input
               id="password"
               type="password"
@@ -70,24 +85,30 @@ export function LoginForm({ onToggleForm }: LoginFormProps) {
               required
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              placeholder="••••••••"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
+          </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            <LogIn className="mr-2 h-4 w-4" />
-            {isLoading ? "Entrando..." : "Entrar"}
+            <UserPlus className="mr-2 h-4 w-4" />
+            {isLoading ? "Criando conta..." : "Criar Conta"}
           </Button>
         </form>
       </CardContent>
       <CardFooter className="flex flex-col items-center">
-        <div className="text-center space-y-2">
-          <p className="text-sm text-muted-foreground mt-2">
-            Não tem uma conta?{" "}
-            <Button variant="link" className="p-0 h-auto font-normal" onClick={onToggleForm}>
-              Criar conta
-            </Button>
-          </p>
-          <p className="text-xs text-center text-muted-foreground mt-2">
-            Dica: Use email: admin@cascacheck.com e senha: 123456
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground mt-2 mb-4">
+          Já tem uma conta?{" "}
+          <Button variant="link" className="p-0 h-auto font-normal" onClick={onToggleForm}>
+            Entrar
+          </Button>
+        </p>
       </CardFooter>
     </Card>
   );

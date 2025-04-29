@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -14,6 +15,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   login: async () => false,
+  register: async () => false,
   logout: () => {},
   isAuthenticated: false,
 });
@@ -68,6 +70,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Simple register function (mock)
+  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+    try {
+      // In a real app, this would be an API call
+      if (!name || !email || !password) {
+        throw new Error("Nome, email e senha são obrigatórios");
+      }
+      
+      // Check if email already exists
+      const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      if (existingUser) {
+        throw new Error("Este email já está registrado");
+      }
+      
+      // Create new user (in a real app this would save to database)
+      const newUser: User = {
+        id: String(users.length + 1),
+        name,
+        email,
+        role: "collaborator",
+      };
+      
+      // Add to users array (in memory only - for demo)
+      users.push(newUser);
+      
+      // Set user in state and localStorage
+      setUser(newUser);
+      setIsAuthenticated(true);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      
+      toast({
+        title: "Conta criada com sucesso",
+        description: "Bem-vindo ao Casca Check Vista!",
+      });
+      
+      return true;
+    } catch (error) {
+      if (error instanceof Error) {
+        toast({
+          title: "Erro no registro",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
+      return false;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
@@ -75,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   );
