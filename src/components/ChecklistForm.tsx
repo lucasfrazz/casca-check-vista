@@ -1,14 +1,15 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checklist, ChecklistItem } from "@/types";
-import { AlertTriangle, Check, X, Upload, Clock } from "lucide-react";
+import { AlertTriangle, Check, X, Upload, Clock, Camera } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { checklistTemplates } from "@/data/checklistTemplates";
+import { useChecklists } from "@/context/ChecklistContext";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ChecklistFormProps {
   checklist: Checklist;
@@ -25,6 +26,10 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
   const [actionPlan, setActionPlan] = useState("");
   const [showJustificationDialog, setShowJustificationDialog] = useState(false);
   const [showActionPlanDialog, setShowActionPlanDialog] = useState(false);
+  const [showPhotoDialog, setShowPhotoDialog] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadImage } = useChecklists();
 
   // Find the template title
   const template = checklistTemplates.find(t => t.type === checklist.type);
@@ -38,25 +43,46 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
       setJustification("");
       setShowJustificationDialog(true);
     } else {
-      // For "sim" status, update immediately
-      onUpdateItem(item.id, status);
-      simulatePhotoUpload(item.id);
+      // For "sim" status, open photo upload dialog
+      setShowPhotoDialog(true);
     }
   };
 
-  const simulatePhotoUpload = (itemId: string) => {
-    // In a real app, this would open a camera/file upload
-    // For now we'll just simulate with a random photo URL
-    const mockPhotoUrl = `https://source.unsplash.com/random/300x200?sig=${Date.now()}`;
-    setPhotoUrl(mockPhotoUrl);
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedItem) return;
     
-    setTimeout(() => {
-      onUpdateItem(itemId, "sim", undefined, mockPhotoUrl);
+    setIsUploading(true);
+    try {
+      // Upload the image
+      const photoUrl = await uploadImage(file, checklist.id, selectedItem.id);
+      
+      if (photoUrl) {
+        setPhotoUrl(photoUrl);
+        onUpdateItem(selectedItem.id, "sim", undefined, photoUrl);
+        toast({
+          title: "Foto enviada",
+          description: "A foto foi anexada ao item com sucesso",
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
       toast({
-        title: "Foto enviada",
-        description: "A foto foi anexada ao item com sucesso",
+        title: "Erro no upload",
+        description: "Não foi possível enviar a foto. Tente novamente.",
+        variant: "destructive",
       });
-    }, 1000);
+    } finally {
+      setIsUploading(false);
+      setShowPhotoDialog(false);
+    }
+  };
+
+  const handleTakePhoto = () => {
+    // Trigger file input click to open camera or file picker
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const handleSubmitJustification = () => {
@@ -233,6 +259,16 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
         </CardFooter>
       </Card>
 
+      {/* Hidden file input for photo upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       {/* Justification Dialog */}
       <Dialog open={showJustificationDialog} onOpenChange={setShowJustificationDialog}>
         <DialogContent>
@@ -289,16 +325,32 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
       </Dialog>
 
       {/* Photo Upload Dialog */}
-      <Dialog open={photoUrl !== ""} onOpenChange={() => setPhotoUrl("")}>
+      <Dialog open={showPhotoDialog} onOpenChange={setShowPhotoDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
-              Upload de Foto
+              <Camera className="h-5 w-5" />
+              Evidência Fotográfica
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <p className="mb-4">Anexe uma foto como evidência:</p>
+            
+            {isUploading ? (
+              <div className="flex justify-center my-8">
+                <Spinner />
+                <span className="ml-2">Enviando foto...</span>
+              </div>
+            ) : (
+              <Button 
+                onClick={handleTakePhoto}
+                className="w-full py-8 flex flex-col items-center gap-2"
+              >
+                <Camera className="h-8 w-8" />
+                <span>Tirar Foto</span>
+              </Button>
+            )}
+            
             {photoUrl && (
               <div className="mt-4 flex justify-center">
                 <img 
@@ -309,11 +361,6 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button onClick={() => setPhotoUrl("")}>
-              Concluir
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -6,11 +6,13 @@ import { ChecklistForm } from "@/components/ChecklistForm";
 import { useChecklists } from "@/context/ChecklistContext";
 import { Checklist } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 
 const ChecklistPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { checklists, updateChecklistItem, addActionPlan, saveChecklist } = useChecklists();
+  const { checklists, updateChecklistItem, addActionPlan, saveChecklist, loading } = useChecklists();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,27 +21,42 @@ const ChecklistPage = () => {
     if (foundChecklist) {
       setChecklist(foundChecklist);
     }
+    setIsLoading(false);
   }, [id, checklists]);
 
-  const handleUpdateItem = (itemId: string, status: "sim" | "nao", justification?: string, photoUrl?: string) => {
+  const handleUpdateItem = async (itemId: string, status: "sim" | "nao", justification?: string, photoUrl?: string) => {
     if (!checklist) return;
-    updateChecklistItem(checklist.id, itemId, status, justification, photoUrl);
+    await updateChecklistItem(checklist.id, itemId, status, justification, photoUrl);
   };
 
-  const handleAddActionPlan = (itemId: string, description: string) => {
+  const handleAddActionPlan = async (itemId: string, description: string) => {
     if (!checklist) return;
-    addActionPlan(checklist.id, itemId, description);
+    await addActionPlan(checklist.id, itemId, description);
   };
 
-  const handleSaveChecklist = () => {
+  const handleSaveChecklist = async () => {
     if (!checklist) return;
-    saveChecklist(checklist);
+    await saveChecklist(checklist);
     navigate("/dashboard");
   };
 
   const handleCancel = () => {
     navigate("/dashboard");
   };
+
+  if (isLoading || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="container mx-auto py-6 px-4 flex justify-center items-center" style={{height: "70vh"}}>
+          <div className="flex flex-col items-center gap-4">
+            <Spinner size="lg" />
+            <p className="text-gray-500">Carregando checklist...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (!checklist) {
     return (
