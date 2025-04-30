@@ -1,15 +1,16 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checklist, ChecklistItem } from "@/types";
-import { AlertTriangle, Check, X, Upload, Clock, Camera } from "lucide-react";
+import { AlertTriangle, Check, X, Camera, Clock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { checklistTemplates } from "@/data/checklistTemplates";
 import { useChecklists } from "@/context/ChecklistContext";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ChecklistFormProps {
   checklist: Checklist;
@@ -28,12 +29,21 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
   const [showActionPlanDialog, setShowActionPlanDialog] = useState(false);
   const [showPhotoDialog, setShowPhotoDialog] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [currentTab, setCurrentTab] = useState("vistoria1");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadImage } = useChecklists();
 
   // Find the template title
   const template = checklistTemplates.find(t => t.type === checklist.type);
   const title = template ? template.title : "Checklist";
+
+  useEffect(() => {
+    // Clear image preview when dialog closes
+    if (!showPhotoDialog) {
+      setImagePreview(null);
+    }
+  }, [showPhotoDialog]);
 
   const handleItemStatus = (item: ChecklistItem, status: "sim" | "nao") => {
     setSelectedItem(item);
@@ -44,6 +54,8 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
       setShowJustificationDialog(true);
     } else {
       // For "sim" status, open photo upload dialog
+      setPhotoUrl("");
+      setImagePreview(null);
       setShowPhotoDialog(true);
     }
   };
@@ -51,6 +63,13 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !selectedItem) return;
+    
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
     
     setIsUploading(true);
     try {
@@ -74,7 +93,6 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
       });
     } finally {
       setIsUploading(false);
-      setShowPhotoDialog(false);
     }
   };
 
@@ -142,6 +160,15 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
     return checklist.items.every(item => item.status !== null);
   };
 
+  // Filtrar itens para cada aba de vistoria
+  const getVisitoriaItems = (vistoriaNumber: number) => {
+    // Por enquanto, vamos dividir os itens em 3 partes iguais para as 3 abas
+    const itemsPerVistoria = Math.ceil(checklist.items.length / 3);
+    const startIndex = (vistoriaNumber - 1) * itemsPerVistoria;
+    const endIndex = startIndex + itemsPerVistoria;
+    return checklist.items.slice(startIndex, endIndex);
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -152,99 +179,115 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {checklist.items.map((item) => (
-            <Card 
-              key={item.id} 
-              className={`${getItemStatusColor(item)} border p-4`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <div className="font-medium">{item.description}</div>
-                  
-                  {item.status === "nao" && item.justification && (
-                    <div className="text-sm text-red-600 mt-1">
-                      Justificativa: {item.justification}
-                    </div>
-                  )}
-                  
-                  {item.timestamp && (
-                    <div className="text-xs text-gray-500 flex items-center mt-1">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {new Date(item.timestamp).toLocaleTimeString()}
-                    </div>
-                  )}
-                  
-                  {item.recurrenceCount > 0 && (
-                    <div className={`text-xs ${item.recurrenceCount >= 2 ? 'text-red-600' : 'text-yellow-600'} font-medium mt-1`}>
-                      {item.recurrenceCount >= 2 
-                        ? "Reincidência crítica!" 
-                        : "Reincidência detectada"}
-                    </div>
-                  )}
-                  
-                  {item.status === "sim" && item.photoUrl && (
-                    <div className="mt-2">
-                      <img 
-                        src={item.photoUrl} 
-                        alt="Evidência" 
-                        className="h-16 w-24 object-cover rounded border"
-                      />
-                    </div>
-                  )}
-                  
-                  {item.actionPlan && (
-                    <div className="text-xs bg-blue-50 p-2 rounded mt-2">
-                      <div className="font-medium">Plano de ação:</div>
-                      <div>{item.actionPlan.description}</div>
-                      <div className="mt-1">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          item.actionPlan.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                          item.actionPlan.status === 'rejected' ? 'bg-red-100 text-red-800' : 
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {item.actionPlan.status === 'approved' ? 'Aprovado' : 
-                           item.actionPlan.status === 'rejected' ? 'Rejeitado' : 
-                           'Pendente'}
-                        </span>
+          <Tabs defaultValue="vistoria1" onValueChange={setCurrentTab} value={currentTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="vistoria1">Manhã</TabsTrigger>
+              <TabsTrigger value="vistoria2">Tarde</TabsTrigger>
+              <TabsTrigger value="vistoria3">Noite</TabsTrigger>
+            </TabsList>
+            
+            {["vistoria1", "vistoria2", "vistoria3"].map((vistoria, index) => (
+              <TabsContent key={vistoria} value={vistoria} className="space-y-4">
+                {getVisitoriaItems(index + 1).map((item) => (
+                  <Card 
+                    key={item.id} 
+                    className={`${getItemStatusColor(item)} border p-4`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="font-medium">{item.description}</div>
+                        
+                        {item.status === "nao" && item.justification && (
+                          <div className="text-sm text-red-600 mt-1">
+                            Justificativa: {item.justification}
+                          </div>
+                        )}
+                        
+                        {item.timestamp && (
+                          <div className="text-xs text-gray-500 flex items-center mt-1">
+                            <Clock className="h-3 w-3 mr-1" />
+                            {new Date(item.timestamp).toLocaleTimeString()}
+                          </div>
+                        )}
+                        
+                        {item.recurrenceCount > 0 && (
+                          <div className={`text-xs ${item.recurrenceCount >= 2 ? 'text-red-600' : 'text-yellow-600'} font-medium mt-1`}>
+                            {item.recurrenceCount >= 2 
+                              ? "Reincidência crítica!" 
+                              : "Reincidência detectada"}
+                          </div>
+                        )}
+                        
+                        {item.status === "sim" && item.photoUrl && (
+                          <div className="mt-2">
+                            <img 
+                              src={item.photoUrl} 
+                              alt="Evidência" 
+                              className="h-16 w-24 object-cover rounded border cursor-pointer"
+                              onClick={() => {
+                                setImagePreview(item.photoUrl || null);
+                                setShowPhotoDialog(true);
+                              }}
+                            />
+                          </div>
+                        )}
+                        
+                        {item.actionPlan && (
+                          <div className="text-xs bg-blue-50 p-2 rounded mt-2">
+                            <div className="font-medium">Plano de ação:</div>
+                            <div>{item.actionPlan.description}</div>
+                            <div className="mt-1">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                item.actionPlan.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                item.actionPlan.status === 'rejected' ? 'bg-red-100 text-red-800' : 
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {item.actionPlan.status === 'approved' ? 'Aprovado' : 
+                                 item.actionPlan.status === 'rejected' ? 'Rejeitado' : 
+                                 'Pendente'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                      
+                      {item.status === null && (
+                        <div className="flex space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="bg-green-50 hover:bg-green-100 border-green-200"
+                            onClick={() => handleItemStatus(item, "sim")}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Sim
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="bg-red-50 hover:bg-red-100 border-red-200"
+                            onClick={() => handleItemStatus(item, "nao")}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Não
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {item.status !== null && (
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.status === 'sim' ? 'bg-green-100 text-green-800' : 
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {item.status === 'sim' ? 'Conforme' : 'Não conforme'}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                
-                {item.status === null && (
-                  <div className="flex space-x-2">
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="bg-green-50 hover:bg-green-100 border-green-200"
-                      onClick={() => handleItemStatus(item, "sim")}
-                    >
-                      <Check className="h-4 w-4 mr-1" />
-                      Sim
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline" 
-                      className="bg-red-50 hover:bg-red-100 border-red-200"
-                      onClick={() => handleItemStatus(item, "nao")}
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Não
-                    </Button>
-                  </div>
-                )}
-                
-                {item.status !== null && (
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    item.status === 'sim' ? 'bg-green-100 text-green-800' : 
-                    'bg-red-100 text-red-800'
-                  }`}>
-                    {item.status === 'sim' ? 'Conforme' : 'Não conforme'}
-                  </div>
-                )}
-              </div>
-            </Card>
-          ))}
+                  </Card>
+                ))}
+              </TabsContent>
+            ))}
+          </Tabs>
         </CardContent>
         <CardFooter className="flex justify-between">
           <Button variant="outline" onClick={onCancel}>
@@ -342,25 +385,44 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
                 <span className="ml-2">Enviando foto...</span>
               </div>
             ) : (
-              <Button 
-                onClick={handleTakePhoto}
-                className="w-full py-8 flex flex-col items-center gap-2"
-              >
-                <Camera className="h-8 w-8" />
-                <span>Tirar Foto</span>
-              </Button>
+              <>
+                {imagePreview ? (
+                  <div className="mt-4 flex justify-center">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="max-h-64 max-w-full object-contain rounded border"
+                    />
+                  </div>
+                ) : (
+                  <Button 
+                    onClick={handleTakePhoto}
+                    className="w-full py-8 flex flex-col items-center gap-2"
+                  >
+                    <Camera className="h-8 w-8" />
+                    <span>Tirar Foto</span>
+                  </Button>
+                )}
+              </>
             )}
             
-            {photoUrl && (
+            {photoUrl && !imagePreview && (
               <div className="mt-4 flex justify-center">
                 <img 
                   src={photoUrl} 
-                  alt="Preview" 
+                  alt="Evidência" 
                   className="max-h-48 object-contain rounded border"
                 />
               </div>
             )}
           </div>
+          {imagePreview && !isUploading && !photoUrl && (
+            <DialogFooter>
+              <Button onClick={() => setShowPhotoDialog(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

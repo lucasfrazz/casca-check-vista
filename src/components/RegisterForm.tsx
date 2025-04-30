@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UnidadeType } from "@/types";
+import { toast } from "@/components/ui/use-toast";
+import { authService } from "@/services/supabase";
 
 interface RegisterFormProps {
   onToggleForm: () => void;
@@ -28,23 +30,44 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
     e.preventDefault();
     
     if (password !== confirmPassword) {
-      // Use toast here in a real app
-      alert("As senhas não coincidem");
+      toast({
+        title: "Erro",
+        description: "As senhas não coincidem",
+        variant: "destructive"
+      });
       return;
     }
 
     if (!unidade) {
-      alert("Selecione uma unidade");
+      toast({
+        title: "Erro",
+        description: "Selecione uma unidade",
+        variant: "destructive"
+      });
       return;
     }
     
     setIsLoading(true);
     
     try {
+      // Use both - Auth Context and direct Supabase service for redundancy
       const success = await register(name, email, password, unidade);
+      await authService.registerUser(email, password, name, unidade);
+      
       if (success) {
+        toast({
+          title: "Conta criada",
+          description: "Sua conta foi criada com sucesso!"
+        });
         navigate("/dashboard");
       }
+    } catch (error) {
+      console.error("Error registering:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar sua conta. Tente novamente.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }

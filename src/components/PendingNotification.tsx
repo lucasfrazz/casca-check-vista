@@ -2,26 +2,31 @@
 import { useState, useEffect } from "react";
 import { useChecklists } from "@/context/ChecklistContext";
 import { PendingActionAlert } from "./PendingActionAlert";
+import { PendingActionPlan } from "@/types";
 
 export function PendingNotification() {
   const { getPendingActionPlans } = useChecklists();
   const [showNotification, setShowNotification] = useState(false);
-  const [pendingPlans, setPendingPlans] = useState(0);
+  const [pendingPlans, setPendingPlans] = useState<PendingActionPlan[]>([]);
   const [maxDays, setMaxDays] = useState(0);
 
   useEffect(() => {
     // Check for pending plans on component mount
     const fetchPlans = async () => {
-      const plans = await getPendingActionPlans();
-      if (plans.length > 0) {
-        setPendingPlans(plans.length);
-        
-        // Find the maximum days pending
-        const max = Math.max(...plans.map(plan => plan.daysPending));
-        setMaxDays(max);
-        
-        // Show notification
-        setShowNotification(true);
+      try {
+        const plans = await getPendingActionPlans();
+        if (plans && plans.length > 0) {
+          setPendingPlans(plans);
+          
+          // Find the maximum days pending
+          const max = Math.max(...plans.map(plan => plan.daysPending));
+          setMaxDays(max);
+          
+          // Show notification
+          setShowNotification(true);
+        }
+      } catch (error) {
+        console.error("Error fetching pending action plans:", error);
       }
     };
 
