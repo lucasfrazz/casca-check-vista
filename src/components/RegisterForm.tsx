@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { UserPlus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { UnidadeType } from "@/types";
 
 interface RegisterFormProps {
   onToggleForm: () => void;
@@ -17,6 +19,7 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [unidade, setUnidade] = useState<UnidadeType | "">("");
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -29,11 +32,16 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
       alert("As senhas não coincidem");
       return;
     }
+
+    if (!unidade) {
+      alert("Selecione uma unidade");
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      const success = await register(name, email, password);
+      const success = await register(name, email, password, unidade);
       if (success) {
         navigate("/dashboard");
       }
@@ -41,6 +49,8 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
       setIsLoading(false);
     }
   };
+
+  const unidades: UnidadeType[] = ["Asa Norte", "Asa Sul", "Sudoeste", "Águas Claras"];
 
   return (
     <Card className="w-full max-w-md mx-auto">
@@ -73,6 +83,25 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="unidade">Unidade</Label>
+            <Select 
+              value={unidade} 
+              onValueChange={(value) => setUnidade(value as UnidadeType)}
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione sua unidade" />
+              </SelectTrigger>
+              <SelectContent>
+                {unidades.map((unit) => (
+                  <SelectItem key={unit} value={unit}>
+                    {unit}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>

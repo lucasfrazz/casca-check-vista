@@ -1,13 +1,13 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { User } from "@/types";
+import { User, UnidadeType } from "@/types";
 import { users } from "@/data/mockData";
 import { toast } from "@/components/ui/use-toast";
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (name: string, email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, unidade: UnidadeType) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -71,11 +71,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Simple register function (mock)
-  const register = async (name: string, email: string, password: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, unidade: UnidadeType): Promise<boolean> => {
     try {
       // In a real app, this would be an API call
-      if (!name || !email || !password) {
-        throw new Error("Nome, email e senha são obrigatórios");
+      if (!name || !email || !password || !unidade) {
+        throw new Error("Nome, email, senha e unidade são obrigatórios");
       }
       
       // Check if email already exists
@@ -90,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name,
         email,
         role: "collaborator",
+        unidade,
       };
       
       // Add to users array (in memory only - for demo)
