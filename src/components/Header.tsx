@@ -52,7 +52,7 @@ export function Header() {
                   variant="ghost"
                   onClick={() => navigate("/manage-users")}
                 >
-                  Usuários
+                  Colaboradores
                 </Button>
                 <Button 
                   variant="ghost"
@@ -113,7 +113,7 @@ export function Header() {
                         setIsMobileMenuOpen(false);
                       }}
                     >
-                      Usuários
+                      Colaboradores
                     </Button>
                     <Button 
                       variant="ghost"
