@@ -11,17 +11,21 @@ export function PendingNotification() {
 
   useEffect(() => {
     // Check for pending plans on component mount
-    const plans = getPendingActionPlans();
-    if (plans.length > 0) {
-      setPendingPlans(plans.length);
-      
-      // Find the maximum days pending
-      const max = Math.max(...plans.map(plan => plan.daysPending));
-      setMaxDays(max);
-      
-      // Show notification
-      setShowNotification(true);
-    }
+    const fetchPlans = async () => {
+      const plans = await getPendingActionPlans();
+      if (plans.length > 0) {
+        setPendingPlans(plans.length);
+        
+        // Find the maximum days pending
+        const max = Math.max(...plans.map(plan => plan.daysPending));
+        setMaxDays(max);
+        
+        // Show notification
+        setShowNotification(true);
+      }
+    };
+
+    fetchPlans();
   }, [getPendingActionPlans]);
 
   const handleCloseAlert = () => {

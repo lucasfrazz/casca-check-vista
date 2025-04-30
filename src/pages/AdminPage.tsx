@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { useChecklists } from "@/context/ChecklistContext";
 import { stores } from "@/data/stores";
-import { ChecklistType } from "@/types";
+import { ChecklistType, Checklist } from "@/types";
 import { checklistTemplates } from "@/data/checklistTemplates";
 import { useNavigate } from "react-router-dom";
 
@@ -17,17 +17,18 @@ const AdminPage = () => {
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [hasResults, setHasResults] = useState<boolean>(false);
+  const [groupedChecklists, setGroupedChecklists] = useState<Record<ChecklistType, boolean>>({} as Record<ChecklistType, boolean>);
   
   const handleStoreSelect = (storeId: string) => {
     setSelectedStore(storeId);
   };
 
-  const handleDateSelect = (date: string) => {
+  const handleDateSelect = async (date: string) => {
     setSelectedDate(date);
     
     if (selectedStore) {
-      const storeChecklists = getChecklistsByStore(selectedStore);
-      const dateChecklists = getChecklistsByDate(date);
+      const storeChecklists = await getChecklistsByStore(selectedStore);
+      const dateChecklists = await getChecklistsByDate(date);
       
       // Check if there are checklists for this store and date
       const filteredChecklists = storeChecklists.filter(cl => 
@@ -35,35 +36,20 @@ const AdminPage = () => {
       );
       
       setHasResults(filteredChecklists.length > 0);
+      
+      // Update grouped checklists
+      const grouped: Record<ChecklistType, boolean> = {} as Record<ChecklistType, boolean>;
+      filteredChecklists.forEach(cl => {
+        grouped[cl.type] = true;
+      });
+      setGroupedChecklists(grouped);
     }
-  };
-
-  // Group checklists by type for the selected store and date
-  const getGroupedChecklists = () => {
-    if (!selectedStore || !selectedDate) return {};
-    
-    const storeChecklists = getChecklistsByStore(selectedStore);
-    const dateChecklists = getChecklistsByDate(selectedDate);
-    
-    const filteredChecklists = storeChecklists.filter(cl => 
-      dateChecklists.some(dc => dc.id === cl.id)
-    );
-    
-    const grouped: Record<ChecklistType, boolean> = {} as Record<ChecklistType, boolean>;
-    
-    filteredChecklists.forEach(cl => {
-      grouped[cl.type] = true;
-    });
-    
-    return grouped;
   };
 
   const getChecklistTitle = (type: ChecklistType) => {
     const template = checklistTemplates.find(t => t.type === type);
     return template ? template.title : type;
   };
-
-  const groupedChecklists = getGroupedChecklists();
   
   return (
     <div className="min-h-screen bg-gray-50">

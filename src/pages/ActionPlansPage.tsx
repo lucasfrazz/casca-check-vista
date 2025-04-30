@@ -13,8 +13,12 @@ const ActionPlansPage = () => {
   const isAdmin = user?.role === "admin";
 
   useEffect(() => {
-    const plans = getPendingActionPlans();
-    setPendingPlans(plans);
+    const fetchPlans = async () => {
+      const plans = await getPendingActionPlans();
+      setPendingPlans(plans);
+    };
+    
+    fetchPlans();
   }, [getPendingActionPlans]);
 
   const handleReviewPlan = (

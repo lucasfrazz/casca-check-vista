@@ -15,8 +15,12 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const plans = getPendingActionPlans();
-    setPendingPlans(plans.length);
+    const fetchPendingPlans = async () => {
+      const plans = await getPendingActionPlans();
+      setPendingPlans(plans.length);
+    };
+    
+    fetchPendingPlans();
   }, [getPendingActionPlans]);
 
   const handleLogout = () => {

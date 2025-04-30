@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StoreSelector } from "@/components/StoreSelector";
@@ -7,19 +7,28 @@ import { stores } from "@/data/stores";
 import { useChecklists } from "@/context/ChecklistContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+interface NonConformingItem {
+  checklistType: string;
+  date: string;
+  description: string;
+  justification: string;
+  recurrenceCount: number;
+  actionPlan: string;
+  actionPlanStatus: string;
+}
+
 const LessonsPage = () => {
   const { getChecklistsByStore } = useChecklists();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const [nonConformingItems, setNonConformingItems] = useState<NonConformingItem[]>([]);
 
-  const handleStoreSelect = (storeId: string) => {
+  const handleStoreSelect = async (storeId: string) => {
     setSelectedStore(storeId);
-  };
-
-  // Get all non-conforming items from store checklists
-  const getNonConformingItems = (storeId: string) => {
-    const storeChecklists = getChecklistsByStore(storeId);
     
-    const nonConforming = storeChecklists.flatMap(checklist => 
+    // Get all non-conforming items from store checklists
+    const storeChecklists = await getChecklistsByStore(storeId);
+    
+    const items = storeChecklists.flatMap(checklist => 
       checklist.items
         .filter(item => item.status === "nao")
         .map(item => ({
@@ -33,7 +42,7 @@ const LessonsPage = () => {
         }))
     );
     
-    return nonConforming;
+    setNonConformingItems(items);
   };
 
   const getChecklistTypeName = (type: string) => {
@@ -48,8 +57,6 @@ const LessonsPage = () => {
     }
   };
 
-  const nonConformingItems = selectedStore ? getNonConformingItems(selectedStore) : [];
-  
   // Group non-conforming items by checklist type
   const groupedItems = nonConformingItems.reduce((acc, item) => {
     if (!acc[item.checklistType]) {
