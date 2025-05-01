@@ -2,11 +2,20 @@
 import { createClient } from '@supabase/supabase-js';
 import { ChecklistItem, ChecklistType, Checklist, ActionPlan } from '@/types';
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Initialize Supabase client with proper error handling
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Check if supabase credentials are available
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase URL and key are required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
+}
+
+// Create client with fallbacks to prevent application from crashing
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder-url.supabase.co',
+  supabaseKey || 'placeholder-key'
+);
 
 // Auth services
 export const authService = {
@@ -341,15 +350,22 @@ export const setupDatabase = async () => {
 
 // Initialize Supabase
 export const initSupabase = async () => {
-  // Check if user is authenticated
-  const { data } = await supabase.auth.getSession();
-  
-  if (!data.session) {
-    console.log('User not authenticated');
-  } else {
-    console.log('User authenticated:', data.session.user.id);
+  try {
+    // Check if user is authenticated
+    const { data } = await supabase.auth.getSession();
+    
+    if (!data.session) {
+      console.log('User not authenticated');
+    } else {
+      console.log('User authenticated:', data.session.user.id);
+    }
+    
+    // Setup database if needed
+    await setupDatabase();
+
+    return true;
+  } catch (error) {
+    console.error('Error initializing Supabase:', error);
+    return false;
   }
-  
-  // Setup database if needed
-  await setupDatabase();
 };
