@@ -6,7 +6,7 @@ import { ChecklistCard } from "@/components/ChecklistCard";
 import { stores } from "@/data/stores";
 import { checklistTemplates } from "@/data/checklistTemplates";
 import { useAuth } from "@/context/AuthContext";
-import { useChecklists } from "@/context/ChecklistContext";
+import { useChecklists } from "@/context/checklist";
 import { useNavigate } from "react-router-dom";
 import { ChecklistType } from "@/types";
 import { PendingNotification } from "@/components/PendingNotification";

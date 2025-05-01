@@ -1,95 +1,22 @@
-import { createContext, useState, useContext, ReactNode, useEffect } from "react";
-import { Checklist, ChecklistItem, ChecklistType, ActionPlan, PendingActionPlan } from "@/types";
-import { mockChecklists, mockActionPlans } from "@/data/mockData";
+import { Checklist, ChecklistType, PendingActionPlan, ActionPlan } from "@/types";
 import { checklistTemplates } from "@/data/checklistTemplates";
-import { useAuth } from "./AuthContext";
-import { toast } from "@/components/ui/use-toast";
 import { stores } from "@/data/stores";
+import { toast } from "@/components/ui/use-toast";
+import { ChecklistActionProps } from "./checklistTypes";
 import { 
-  supabase, 
   checklistService, 
   actionPlanService, 
   storageService 
 } from "@/services/supabase";
 
-interface ChecklistContextType {
-  checklists: Checklist[];
-  createChecklist: (type: ChecklistType, storeId: string) => Promise<Checklist | null>;
-  saveChecklist: (checklist: Checklist) => Promise<void>;
-  getChecklistsByStore: (storeId: string) => Promise<Checklist[]>;
-  getChecklistsByDate: (date: string) => Promise<Checklist[]>;
-  getChecklistsByType: (type: ChecklistType) => Promise<Checklist[]>;
-  updateChecklistItem: (
-    checklistId: string,
-    itemId: string,
-    status: "sim" | "nao",
-    justification?: string,
-    photoUrl?: string
-  ) => Promise<void>;
-  addActionPlan: (
-    checklistId: string,
-    itemId: string,
-    description: string
-  ) => Promise<void>;
-  getPendingActionPlans: () => Promise<PendingActionPlan[]>;
-  reviewActionPlan: (
-    planId: string,
-    checklistId: string,
-    itemId: string,
-    status: "approved" | "rejected",
-    comment?: string
-  ) => Promise<void>;
-  uploadImage: (file: File, checklistId: string, itemId: string) => Promise<string | null>;
-  loading: boolean;
-}
-
-const ChecklistContext = createContext<ChecklistContextType>({
-  checklists: [],
-  createChecklist: async () => null,
-  saveChecklist: async () => {},
-  getChecklistsByStore: async () => [],
-  getChecklistsByDate: async () => [],
-  getChecklistsByType: async () => [],
-  updateChecklistItem: async () => {},
-  addActionPlan: async () => {},
-  getPendingActionPlans: async () => [],
-  reviewActionPlan: async () => {},
-  uploadImage: async () => null,
-  loading: false,
-});
-
-export function ChecklistProvider({ children }: { children: ReactNode }) {
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
-  const [pendingPlans, setPendingPlans] = useState<PendingActionPlan[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
-
-  // Load checklists on mount
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      if (user) {
-        setLoading(true);
-        try {
-          // In a real app, we'd fetch the user's checklists
-          // For now, using mock data
-          setChecklists(mockChecklists);
-          setPendingPlans(mockActionPlans);
-        } catch (error) {
-          console.error("Error fetching initial data:", error);
-          toast({
-            title: "Erro",
-            description: "Falha ao carregar dados iniciais",
-            variant: "destructive",
-          });
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchInitialData();
-  }, [user]);
-
+export function useChecklistActions({
+  checklists,
+  setChecklists,
+  pendingPlans,
+  setPendingPlans,
+  setLoading,
+  user
+}: ChecklistActionProps) {
   // Create a new checklist based on template
   const createChecklist = async (type: ChecklistType, storeId: string): Promise<Checklist | null> => {
     if (!user) {
@@ -535,26 +462,16 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  return (
-    <ChecklistContext.Provider
-      value={{
-        checklists,
-        createChecklist,
-        saveChecklist,
-        getChecklistsByStore,
-        getChecklistsByDate,
-        getChecklistsByType,
-        updateChecklistItem,
-        addActionPlan,
-        getPendingActionPlans,
-        reviewActionPlan,
-        uploadImage,
-        loading
-      }}
-    >
-      {children}
-    </ChecklistContext.Provider>
-  );
+  return {
+    createChecklist,
+    saveChecklist,
+    getChecklistsByStore,
+    getChecklistsByDate,
+    getChecklistsByType,
+    updateChecklistItem,
+    addActionPlan,
+    getPendingActionPlans,
+    reviewActionPlan,
+    uploadImage
+  };
 }
-
-export const useChecklists = () => useContext(ChecklistContext);

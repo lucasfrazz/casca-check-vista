@@ -5,7 +5,7 @@ import { StoreSelector } from "@/components/StoreSelector";
 import { DateSelector } from "@/components/DateSelector";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useChecklists } from "@/context/ChecklistContext";
+import { useChecklists } from "@/context/checklist";
 import { stores } from "@/data/stores";
 import { ChecklistType, Checklist } from "@/types";
 import { checklistTemplates } from "@/data/checklistTemplates";
