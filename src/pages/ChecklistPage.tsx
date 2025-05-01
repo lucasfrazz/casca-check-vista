@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
@@ -25,16 +26,19 @@ const ChecklistPage = () => {
 
   const handleUpdateItem = async (itemId: string, status: "sim" | "nao", justification?: string, photoUrl?: string) => {
     if (!checklist) return;
+    console.log("Updating item with:", { itemId, status, justification, photoUrl });
     await updateChecklistItem(checklist.id, itemId, status, justification, photoUrl);
   };
 
   const handleAddActionPlan = async (itemId: string, description: string) => {
     if (!checklist) return;
+    console.log("Adding action plan:", { itemId, description });
     await addActionPlan(checklist.id, itemId, description);
   };
 
   const handleSaveChecklist = async () => {
     if (!checklist) return;
+    console.log("Saving checklist:", checklist.id);
     await saveChecklist(checklist);
     navigate("/dashboard");
   };

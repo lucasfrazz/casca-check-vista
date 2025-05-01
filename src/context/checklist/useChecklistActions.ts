@@ -378,6 +378,8 @@ export function useChecklistActions({
 
     setLoading(true);
     try {
+      console.log("Reviewing action plan:", { planId, status, comment });
+      
       const timestamp = new Date().toISOString();
 
       // Update the action plan in the checklist
@@ -408,9 +410,19 @@ export function useChecklistActions({
         });
       });
 
-      // If approved, remove from pending plans
+      // Permanently remove from pending plans if approved
       if (status === "approved") {
         setPendingPlans(prev => prev.filter(plan => plan.id !== planId));
+        
+        // In a real app, we would update in Supabase
+        await actionPlanService.reviewActionPlan(
+          planId, 
+          status, 
+          user.id, 
+          user.name, 
+          comment
+        );
+        
         toast({
           title: "Plano de Ação Aprovado",
           description: "O plano de ação foi aprovado com sucesso.",
@@ -423,9 +435,6 @@ export function useChecklistActions({
           variant: "destructive",
         });
       }
-
-      // In a real app with Supabase, we'd save to the database
-      // await actionPlanService.reviewActionPlan(planId, status, user.id, user.name, comment);
       
     } catch (error) {
       console.error("Error reviewing action plan:", error);
@@ -439,16 +448,22 @@ export function useChecklistActions({
     }
   };
 
-  // Upload an image for a checklist item
+  // Upload an image for a checklist item - updated with better error handling and logging
   const uploadImage = async (file: File, checklistId: string, itemId: string): Promise<string | null> => {
     setLoading(true);
     try {
-      // In a real app with Supabase, we'd upload to storage
-      // return await storageService.uploadImage(file, checklistId, itemId);
+      console.log("Starting image upload:", { checklistId, itemId, fileName: file.name });
       
-      // For now, just simulate with a random URL
-      const mockPhotoUrl = `https://source.unsplash.com/random/300x200?sig=${Date.now()}`;
-      return mockPhotoUrl;
+      // In a real app with Supabase, we'd upload to storage
+      const photoUrl = await storageService.uploadImage(file, checklistId, itemId);
+      console.log("Image upload result:", photoUrl);
+      
+      if (!photoUrl) {
+        throw new Error("Failed to upload image");
+      }
+      
+      // For now, we'll use a mock URL that will display correctly
+      return photoUrl;
     } catch (error) {
       console.error("Error uploading image:", error);
       toast({

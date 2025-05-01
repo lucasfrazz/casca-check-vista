@@ -8,7 +8,7 @@ import { AlertTriangle, Check, X, Camera, Clock } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { checklistTemplates } from "@/data/checklistTemplates";
-import { useChecklists } from "@/context/ChecklistContext";
+import { useChecklists } from "@/context/checklist";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -67,22 +67,29 @@ export function ChecklistForm({ checklist, onUpdateItem, onAddActionPlan, onSave
     // Show preview immediately
     const reader = new FileReader();
     reader.onload = (e) => {
-      setImagePreview(e.target?.result as string);
+      const result = e.target?.result as string;
+      console.log("File preview generated:", result ? "success" : "failed");
+      setImagePreview(result);
     };
     reader.readAsDataURL(file);
+    console.log("Starting file read for preview");
     
     setIsUploading(true);
     try {
+      console.log("Starting upload for file:", file.name);
       // Upload the image
-      const photoUrl = await uploadImage(file, checklist.id, selectedItem.id);
+      const uploadedPhotoUrl = await uploadImage(file, checklist.id, selectedItem.id);
+      console.log("Upload result:", uploadedPhotoUrl);
       
-      if (photoUrl) {
-        setPhotoUrl(photoUrl);
-        onUpdateItem(selectedItem.id, "sim", undefined, photoUrl);
+      if (uploadedPhotoUrl) {
+        setPhotoUrl(uploadedPhotoUrl);
+        onUpdateItem(selectedItem.id, "sim", undefined, uploadedPhotoUrl);
         toast({
           title: "Foto enviada",
           description: "A foto foi anexada ao item com sucesso",
         });
+      } else {
+        throw new Error("Failed to upload image");
       }
     } catch (error) {
       console.error("Error uploading image:", error);

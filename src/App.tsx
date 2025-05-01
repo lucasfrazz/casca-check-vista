@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
-import { ChecklistProvider } from "./context/ChecklistContext";
+import { ChecklistProvider } from "./context/checklist";
 import { PrivateRoute } from "./components/PrivateRoute";
 
 // Pages

@@ -1,6 +1,6 @@
 
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
-import { Checklist, ChecklistItem, ChecklistType, ActionPlan, PendingActionPlan } from "@/types";
+import { Checklist, PendingActionPlan } from "@/types";
 import { mockChecklists, mockActionPlans } from "@/data/mockData";
 import { useAuth } from "../AuthContext";
 import { toast } from "@/components/ui/use-toast";
@@ -45,10 +45,21 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       if (user) {
         setLoading(true);
         try {
-          // In a real app, we'd fetch the user's checklists
-          // For now, using mock data
-          setChecklists(mockChecklists);
-          setPendingPlans(mockActionPlans);
+          // Filter mock data based on user's store if they're a collaborator
+          let filteredChecklists = mockChecklists;
+          let filteredActionPlans = mockActionPlans;
+          
+          if (user.role === "collaborator" && user.unidade) {
+            // Filter checklists by user's store/unit
+            const storeId = stores.find(store => store.name === user.unidade)?.id;
+            if (storeId) {
+              filteredChecklists = mockChecklists.filter(cl => cl.storeId === storeId);
+              filteredActionPlans = mockActionPlans.filter(plan => plan.storeId === storeId);
+            }
+          }
+          
+          setChecklists(filteredChecklists);
+          setPendingPlans(filteredActionPlans);
         } catch (error) {
           console.error("Error fetching initial data:", error);
           toast({
@@ -79,3 +90,6 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 }
 
 export const useChecklists = () => useContext(ChecklistContext);
+
+// Import stores for filtering
+import { stores } from "@/data/stores";

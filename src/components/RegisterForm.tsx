@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -50,16 +49,22 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
     setIsLoading(true);
     
     try {
-      // Use both - Auth Context and direct Supabase service for redundancy
-      const success = await register(name, email, password, unidade);
-      await authService.registerUser(email, password, name, unidade);
+      console.log("Registering user with:", { name, email, password, unidade });
+      // First try the auth service directly
+      const registrationSuccess = await authService.registerUser(email, password, name, unidade);
       
-      if (success) {
+      // Then use the auth context
+      const contextSuccess = await register(name, email, password, unidade);
+      
+      // If either method worked
+      if (registrationSuccess || contextSuccess) {
         toast({
           title: "Conta criada",
           description: "Sua conta foi criada com sucesso!"
         });
         navigate("/dashboard");
+      } else {
+        throw new Error("Falha ao criar conta");
       }
     } catch (error) {
       console.error("Error registering:", error);
