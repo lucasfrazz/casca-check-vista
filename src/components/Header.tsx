@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
-import { useChecklists } from "@/context/ChecklistContext";
+import { useChecklists } from "@/context/checklist"; // Updated import path
 import { useNavigate } from "react-router-dom";
 import { Bell, LogOut, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";

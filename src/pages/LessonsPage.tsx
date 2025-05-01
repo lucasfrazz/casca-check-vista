@@ -4,7 +4,7 @@ import { Header } from "@/components/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StoreSelector } from "@/components/StoreSelector";
 import { stores } from "@/data/stores";
-import { useChecklists } from "@/context/ChecklistContext";
+import { useChecklists } from "@/context/checklist"; // Updated import path
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface NonConformingItem {
