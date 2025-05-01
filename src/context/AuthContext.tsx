@@ -1,7 +1,7 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { User, UnidadeType } from "@/types";
-import { users } from "@/data/mockData";
+import { authService } from "@/services/supabase";
 import { toast } from "@/components/ui/use-toast";
 
 interface AuthContextType {
@@ -25,37 +25,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check for saved user in localStorage
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-      setIsAuthenticated(true);
-    }
+    // Check for current session
+    const checkSession = async () => {
+      try {
+        const userData = await authService.getCurrentUser();
+        if (userData) {
+          setUser(userData);
+          setIsAuthenticated(true);
+        }
+      } catch (error) {
+        console.error("Session check error:", error);
+      }
+    };
+    
+    checkSession();
   }, []);
 
-  // Simple login function (mock)
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // In a real app, this would be an API call
       if (!email || !password) {
         throw new Error("Email e senha são obrigatórios");
       }
       
-      // Simple validation for demo purposes
-      const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+      const userData = await authService.login(email, password);
       
-      if (!foundUser) {
-        throw new Error("Usuário não encontrado");
+      if (!userData) {
+        throw new Error("Usuário não encontrado ou senha incorreta");
       }
       
-      if (password !== "123456") { // Mock password check
-        throw new Error("Senha incorreta");
-      }
-      
-      // Set user in state and localStorage
-      setUser(foundUser);
+      // Set user in state
+      setUser(userData);
       setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(foundUser));
       
       return true;
     } catch (error) {
@@ -70,43 +70,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Simple register function (mock)
   const register = async (name: string, email: string, password: string, unidade: UnidadeType): Promise<boolean> => {
     try {
-      // In a real app, this would be an API call
       if (!name || !email || !password || !unidade) {
         throw new Error("Nome, email, senha e unidade são obrigatórios");
       }
       
-      // Check if email already exists
-      const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (existingUser) {
-        throw new Error("Este email já está registrado");
+      const userData = await authService.register(name, email, password, unidade);
+      
+      if (!userData) {
+        throw new Error("Falha ao registrar usuário");
       }
       
-      // Create new user (in a real app this would save to database)
-      const newUser: User = {
-        id: String(users.length + 1),
-        name,
-        email,
-        role: "collaborator",
-        unidade,
-      };
+      // Set user in state - for demo only, in production should redirect to login
+      const loginResult = await login(email, password);
       
-      // Add to users array (in memory only - for demo)
-      users.push(newUser);
+      if (loginResult) {
+        toast({
+          title: "Conta criada com sucesso",
+          description: "Bem-vindo ao Casca Check Vista!",
+        });
+      }
       
-      // Set user in state and localStorage
-      setUser(newUser);
-      setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(newUser));
-      
-      toast({
-        title: "Conta criada com sucesso",
-        description: "Bem-vindo ao Casca Check Vista!",
-      });
-      
-      return true;
+      return loginResult;
     } catch (error) {
       if (error instanceof Error) {
         toast({
@@ -119,10 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('user');
   };
 
   return (

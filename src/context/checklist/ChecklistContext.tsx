@@ -1,11 +1,11 @@
 
 import { createContext, useState, useContext, ReactNode, useEffect } from "react";
 import { Checklist, PendingActionPlan } from "@/types";
-import { mockChecklists, mockActionPlans } from "@/data/mockData";
 import { useAuth } from "../AuthContext";
 import { toast } from "@/components/ui/use-toast";
 import { useChecklistActions } from "./useChecklistActions";
 import { ChecklistContextType } from "./checklistTypes";
+import { checklistService } from "@/services/supabase";
 
 // Create the context with default values
 const ChecklistContext = createContext<ChecklistContextType>({
@@ -45,21 +45,27 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
       if (user) {
         setLoading(true);
         try {
-          // Filter mock data based on user's store if they're a collaborator
-          let filteredChecklists = mockChecklists;
-          let filteredActionPlans = mockActionPlans;
+          // Get checklists from Supabase
+          let fetchedChecklists: Checklist[] = [];
           
-          if (user.role === "collaborator" && user.unidade) {
-            // Filter checklists by user's store/unit
-            const storeId = stores.find(store => store.name === user.unidade)?.id;
-            if (storeId) {
-              filteredChecklists = mockChecklists.filter(cl => cl.storeId === storeId);
-              filteredActionPlans = mockActionPlans.filter(plan => plan.storeId === storeId);
-            }
+          if (user.role === "admin") {
+            // Admin can see all checklists
+            const storeChecklists = await Promise.all(
+              (user.stores || []).map(storeId => 
+                checklistService.getChecklistsByStore(storeId)
+              )
+            );
+            fetchedChecklists = storeChecklists.flat();
+          } else if (user.role === "collaborator" && user.storeId) {
+            // Collaborators only see their store's checklists
+            fetchedChecklists = await checklistService.getChecklistsByStore(user.storeId);
           }
           
-          setChecklists(filteredChecklists);
-          setPendingPlans(filteredActionPlans);
+          setChecklists(fetchedChecklists);
+          
+          // Get pending action plans
+          const plans = await actions.getPendingActionPlans();
+          setPendingPlans(plans);
         } catch (error) {
           console.error("Error fetching initial data:", error);
           toast({
@@ -74,7 +80,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     };
 
     fetchInitialData();
-  }, [user]);
+  }, [user, actions.getPendingActionPlans]);
 
   return (
     <ChecklistContext.Provider
@@ -90,6 +96,3 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
 }
 
 export const useChecklists = () => useContext(ChecklistContext);
-
-// Import stores for filtering
-import { stores } from "@/data/stores";

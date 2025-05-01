@@ -1,4 +1,3 @@
-
 export type UserRole = "admin" | "collaborator";
 export type UnidadeType = "Asa Norte" | "Asa Sul" | "Sudoeste" | "Águas Claras";
 
@@ -36,6 +35,7 @@ export interface Checklist {
   userName: string;
   items: ChecklistItem[];
   completed: boolean;
+  period?: "manhã" | "tarde" | "noite";
 }
 
 export interface ActionPlan {

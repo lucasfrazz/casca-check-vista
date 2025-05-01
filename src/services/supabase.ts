@@ -1,371 +1,533 @@
 
-import { createClient } from '@supabase/supabase-js';
-import { ChecklistItem, ChecklistType, Checklist, ActionPlan } from '@/types';
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { toast } from "@/components/ui/use-toast";
+import { Checklist, ActionPlan } from "@/types";
 
-// Initialize Supabase client with proper error handling
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Supabase configuration
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
-// Check if supabase credentials are available
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Supabase URL and key are required. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY environment variables.');
-}
+let supabase: SupabaseClient | null = null;
 
-// Create client with fallbacks to prevent application from crashing
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder-url.supabase.co',
-  supabaseKey || 'placeholder-key'
-);
-
-// Auth services
-export const authService = {
-  // Register a new user
-  async registerUser(email: string, password: string, name: string, unidade: string): Promise<boolean> {
-    try {
-      // Register the user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      
-      if (authError) {
-        console.error('Error registering user:', authError);
-        return false;
-      }
-      
-      if (!authData.user) {
-        console.error('No user returned after registration');
-        return false;
-      }
-      
-      // Create a profile record in the users table
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: authData.user.id,
-            email,
-            name,
-            role: 'collaborator',
-            unidade,
-          }
-        ]);
-        
-      if (profileError) {
-        console.error('Error creating user profile:', profileError);
-        return false;
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error in registerUser:', error);
-      return false;
+export const initSupabase = async () => {
+  try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("Supabase URL or Anon Key not configured.");
+      return null;
     }
+    
+    supabase = createClient(supabaseUrl, supabaseAnonKey);
+    console.log("Supabase initialized successfully");
+    return supabase;
+  } catch (error) {
+    console.error("Failed to initialize Supabase:", error);
+    return null;
   }
 };
 
-// Checklist services
-export const checklistService = {
-  // Create a new checklist
-  async createChecklist(checklist: Omit<Checklist, 'id'>): Promise<Checklist | null> {
+export const getSupabase = () => {
+  if (!supabase) {
+    // Initialize on demand if not already done
+    initSupabase();
+  }
+  return supabase;
+};
+
+// Auth service
+export const authService = {
+  // Login with email and password
+  login: async (email: string, password: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
     try {
-      const { data, error } = await supabase
-        .from('checklists')
-        .insert(checklist)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      // Get user profile data
+      const { data: profileData, error: profileError } = await supabase
+        .from('users')
         .select('*')
+        .eq('id', data.user.id)
         .single();
-      
-      if (error) {
-        console.error('Error creating checklist:', error);
-        return null;
-      }
-      
-      return data as Checklist;
-    } catch (error) {
-      console.error('Error in createChecklist:', error);
+
+      if (profileError) throw profileError;
+
+      return {
+        ...data.user,
+        ...profileData,
+      };
+    } catch (error: any) {
+      console.error("Login error:", error.message);
       return null;
     }
   },
 
-  // Get checklists by store ID
-  async getChecklistsByStore(storeId: string): Promise<Checklist[]> {
+  // Register a new user
+  register: async (name: string, email: string, password: string, unidade: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
     try {
-      const { data, error } = await supabase
-        .from('checklists')
-        .select(`
-          *,
-          items:checklist_items(*)
-        `)
-        .eq('storeId', storeId);
-      
-      if (error) {
-        console.error('Error fetching checklists by store:', error);
-        return [];
-      }
-      
-      return data as unknown as Checklist[];
-    } catch (error) {
-      console.error('Error in getChecklistsByStore:', error);
-      return [];
+      // Create auth user
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (!data.user) throw new Error("User registration failed");
+
+      // Create profile record
+      const { error: profileError } = await supabase
+        .from('users')
+        .insert([
+          {
+            id: data.user.id,
+            name,
+            email,
+            role: "collaborator",
+            unidade,
+          }
+        ]);
+
+      if (profileError) throw profileError;
+
+      return data.user;
+    } catch (error: any) {
+      console.error("Registration error:", error.message);
+      return null;
     }
   },
 
-  // Get checklists by date
-  async getChecklistsByDate(date: string): Promise<Checklist[]> {
+  // Logout
+  logout: async () => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
     try {
-      const { data, error } = await supabase
-        .from('checklists')
-        .select(`
-          *,
-          items:checklist_items(*)
-        `)
-        .eq('date', date);
-      
-      if (error) {
-        console.error('Error fetching checklists by date:', error);
-        return [];
-      }
-      
-      return data as unknown as Checklist[];
+      await supabase.auth.signOut();
     } catch (error) {
-      console.error('Error in getChecklistsByDate:', error);
-      return [];
+      console.error("Logout error:", error);
     }
   },
 
-  // Get checklists by type
-  async getChecklistsByType(type: ChecklistType): Promise<Checklist[]> {
+  // Get current session
+  getCurrentUser: async () => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
     try {
+      const { data } = await supabase.auth.getSession();
+      
+      if (!data.session) return null;
+
+      // Get user profile data
+      const { data: profileData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', data.session.user.id)
+        .single();
+
+      return profileData;
+    } catch (error) {
+      console.error("Get current user error:", error);
+      return null;
+    }
+  }
+};
+
+// Checklist service
+export const checklistService = {
+  // Create a new checklist
+  createChecklist: async (checklist: Checklist) => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
+    try {
+      // Insert the checklist
       const { data, error } = await supabase
         .from('checklists')
-        .select(`
-          *,
-          items:checklist_items(*)
-        `)
-        .eq('type', type);
-      
-      if (error) {
-        console.error('Error fetching checklists by type:', error);
-        return [];
-      }
-      
-      return data as unknown as Checklist[];
-    } catch (error) {
-      console.error('Error in getChecklistsByType:', error);
-      return [];
-    }
-  },
+        .insert([
+          {
+            id: checklist.id,
+            type: checklist.type,
+            date: checklist.date,
+            storeId: checklist.storeId,
+            userId: checklist.userId,
+            userName: checklist.userName,
+            completed: checklist.completed,
+            period: checklist.period
+          }
+        ])
+        .select()
+        .single();
 
-  // Update a checklist item
-  async updateChecklistItem(
-    itemId: string,
-    status: "sim" | "nao",
-    justification?: string,
-    photoUrl?: string
-  ): Promise<boolean> {
-    try {
-      const updateData: Partial<ChecklistItem> = { 
-        status, 
-        timestamp: new Date().toISOString() 
-      };
-      
-      if (status === 'nao' && justification) {
-        updateData.justification = justification;
-      }
-      
-      if (status === 'sim' && photoUrl) {
-        updateData.photoUrl = photoUrl;
-      }
-      
-      const { error } = await supabase
+      if (error) throw error;
+
+      // Insert checklist items
+      const itemsToInsert = checklist.items.map(item => ({
+        id: item.id,
+        checklistId: checklist.id,
+        description: item.description,
+        status: item.status,
+        justification: item.justification,
+        photoUrl: item.photoUrl,
+        timestamp: item.timestamp,
+        recurrenceCount: item.recurrenceCount || 0
+      }));
+
+      const { error: itemsError } = await supabase
         .from('checklist_items')
-        .update(updateData)
-        .eq('id', itemId);
-      
-      if (error) {
-        console.error('Error updating checklist item:', error);
-        return false;
-      }
-      
-      return true;
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      return {
+        ...data,
+        items: checklist.items
+      };
     } catch (error) {
-      console.error('Error in updateChecklistItem:', error);
-      return false;
+      console.error("Create checklist error:", error);
+      return null;
     }
   },
 
   // Save a completed checklist
-  async saveChecklist(checklistId: string): Promise<boolean> {
+  saveChecklist: async (checklistId: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+
     try {
       const { error } = await supabase
         .from('checklists')
         .update({ completed: true })
         .eq('id', checklistId);
-      
-      if (error) {
-        console.error('Error saving checklist:', error);
-        return false;
-      }
-      
+
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error('Error in saveChecklist:', error);
+      console.error("Save checklist error:", error);
       return false;
     }
-  }
+  },
+
+  // Get checklists by store
+  getChecklistsByStore: async (storeId: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    try {
+      // Get checklists for the store
+      const { data: checklists, error } = await supabase
+        .from('checklists')
+        .select('*')
+        .eq('storeId', storeId);
+
+      if (error) throw error;
+      if (!checklists || checklists.length === 0) return [];
+
+      // Get all items for these checklists
+      const checklistIds = checklists.map(c => c.id);
+      const { data: items, error: itemsError } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .in('checklistId', checklistIds);
+
+      if (itemsError) throw itemsError;
+
+      // Combine checklists with their items
+      return checklists.map(checklist => {
+        const checklistItems = items?.filter(item => item.checklistId === checklist.id) || [];
+        return {
+          ...checklist,
+          items: checklistItems
+        };
+      });
+    } catch (error) {
+      console.error("Get checklists by store error:", error);
+      return [];
+    }
+  },
+
+  // Get checklists by date
+  getChecklistsByDate: async (date: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    try {
+      // Get checklists for the date
+      const { data: checklists, error } = await supabase
+        .from('checklists')
+        .select('*')
+        .eq('date', date);
+
+      if (error) throw error;
+      if (!checklists || checklists.length === 0) return [];
+
+      // Get all items for these checklists
+      const checklistIds = checklists.map(c => c.id);
+      const { data: items, error: itemsError } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .in('checklistId', checklistIds);
+
+      if (itemsError) throw itemsError;
+
+      // Combine checklists with their items
+      return checklists.map(checklist => {
+        const checklistItems = items?.filter(item => item.checklistId === checklist.id) || [];
+        return {
+          ...checklist,
+          items: checklistItems
+        };
+      });
+    } catch (error) {
+      console.error("Get checklists by date error:", error);
+      return [];
+    }
+  },
+
+  // Get checklists by type
+  getChecklistsByType: async (type: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
+    try {
+      // Get checklists for the type
+      const { data: checklists, error } = await supabase
+        .from('checklists')
+        .select('*')
+        .eq('type', type);
+
+      if (error) throw error;
+      if (!checklists || checklists.length === 0) return [];
+
+      // Get all items for these checklists
+      const checklistIds = checklists.map(c => c.id);
+      const { data: items, error: itemsError } = await supabase
+        .from('checklist_items')
+        .select('*')
+        .in('checklistId', checklistIds);
+
+      if (itemsError) throw itemsError;
+
+      // Combine checklists with their items
+      return checklists.map(checklist => {
+        const checklistItems = items?.filter(item => item.checklistId === checklist.id) || [];
+        return {
+          ...checklist,
+          items: checklistItems
+        };
+      });
+    } catch (error) {
+      console.error("Get checklists by type error:", error);
+      return [];
+    }
+  },
+
+  // Update checklist item
+  updateChecklistItem: async (itemId: string, status: "sim" | "nao", justification?: string, photoUrl?: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+
+    try {
+      const updateData: any = {
+        status,
+        timestamp: new Date().toISOString()
+      };
+
+      if (status === "nao" && justification) {
+        updateData.justification = justification;
+      }
+
+      if (status === "sim" && photoUrl) {
+        updateData.photoUrl = photoUrl;
+      }
+
+      const { error } = await supabase
+        .from('checklist_items')
+        .update(updateData)
+        .eq('id', itemId);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Update checklist item error:", error);
+      return false;
+    }
+  },
 };
 
-// Action Plan services
+// Action Plan service
 export const actionPlanService = {
-  // Add a new action plan
-  async addActionPlan(actionPlan: Omit<ActionPlan, 'id'>): Promise<ActionPlan | null> {
+  // Add action plan
+  addActionPlan: async (actionPlan: Omit<ActionPlan, 'id'>) => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
     try {
       const { data, error } = await supabase
         .from('action_plans')
-        .insert(actionPlan)
-        .select('*')
+        .insert([actionPlan])
+        .select()
         .single();
-      
-      if (error) {
-        console.error('Error adding action plan:', error);
-        return null;
-      }
-      
-      return data as ActionPlan;
+
+      if (error) throw error;
+      return data;
     } catch (error) {
-      console.error('Error in addActionPlan:', error);
+      console.error("Add action plan error:", error);
       return null;
     }
   },
 
   // Get pending action plans
-  async getPendingActionPlans(): Promise<any[]> {
+  getPendingActionPlans: async () => {
+    const supabase = getSupabase();
+    if (!supabase) return [];
+
     try {
+      // Get pending action plans
       const { data, error } = await supabase
         .from('action_plans')
         .select(`
           *,
-          checklists!inner(*),
-          checklist_items!inner(*)
+          checklist_items(
+            id, 
+            description, 
+            checklistId
+          ),
+          checklists:checklist_items(
+            checklistId, 
+            checklists(
+              id, 
+              type, 
+              storeId
+            )
+          )
         `)
-        .in('status', ['pending', 'enviado']);
-      
-      if (error) {
-        console.error('Error fetching pending action plans:', error);
-        return [];
-      }
-      
-      return data || [];
+        .eq('status', 'pending');
+
+      if (error) throw error;
+      if (!data) return [];
+
+      // Get store names
+      const storeIds = data.map(plan => plan.checklists?.checklists?.storeId).filter(Boolean);
+      const { data: stores, error: storesError } = await supabase
+        .from('stores')
+        .select('id, name')
+        .in('id', storeIds);
+
+      if (storesError) throw storesError;
+
+      // Format the data
+      return data.map(plan => {
+        const checklistType = plan.checklists?.checklists?.type;
+        const storeId = plan.checklists?.checklists?.storeId;
+        const store = stores?.find(s => s.id === storeId);
+        const createdAt = new Date(plan.createdAt);
+        const now = new Date();
+        const daysPending = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+        return {
+          id: plan.id,
+          description: plan.description,
+          createdAt: plan.createdAt,
+          daysPending,
+          storeId,
+          storeName: store?.name || "Loja Desconhecida",
+          checklistType,
+          itemDescription: plan.checklist_items?.description
+        };
+      });
     } catch (error) {
-      console.error('Error in getPendingActionPlans:', error);
+      console.error("Get pending action plans error:", error);
       return [];
     }
   },
 
-  // Review an action plan
-  async reviewActionPlan(
+  // Review action plan
+  reviewActionPlan: async (
     planId: string,
     status: "approved" | "rejected",
     reviewerId: string,
     reviewerName: string,
     comment?: string
-  ): Promise<boolean> {
+  ) => {
+    const supabase = getSupabase();
+    if (!supabase) return false;
+
     try {
-      const updateData: any = {
-        status,
-        reviewerId,
-        reviewerName,
-        updatedAt: new Date().toISOString()
-      };
-      
-      if (comment) {
-        updateData.reviewComment = comment;
-      }
-      
       const { error } = await supabase
         .from('action_plans')
-        .update(updateData)
+        .update({
+          status,
+          updatedAt: new Date().toISOString(),
+          reviewerId,
+          reviewerName,
+          reviewComment: comment
+        })
         .eq('id', planId);
-      
-      if (error) {
-        console.error('Error reviewing action plan:', error);
-        return false;
-      }
-      
+
+      if (error) throw error;
       return true;
     } catch (error) {
-      console.error('Error in reviewActionPlan:', error);
+      console.error("Review action plan error:", error);
       return false;
     }
-  }
+  },
 };
 
-// Storage service for image uploads
+// Storage service
 export const storageService = {
-  // Upload an image for a checklist item
-  async uploadImage(file: File, checklistId: string, itemId: string): Promise<string | null> {
+  // Upload image
+  uploadImage: async (file: File, checklistId: string, itemId: string): Promise<string | null> => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${checklistId}/${itemId}-${Date.now()}.${fileExt}`;
-      const filePath = `checklist-images/${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('checklist-files')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-        
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        return null;
-      }
-      
+      const filePath = `checklist-photos/${fileName}`;
+
+      const { error } = await supabase.storage
+        .from('images')
+        .upload(filePath, file);
+
+      if (error) throw error;
+
+      // Get public URL
       const { data } = supabase.storage
-        .from('checklist-files')
+        .from('images')
         .getPublicUrl(filePath);
-        
+
       return data.publicUrl;
     } catch (error) {
-      console.error('Error in uploadImage:', error);
+      console.error("Upload image error:", error);
       return null;
     }
   },
-  
-  // Get the public URL for an image
-  getPublicUrl(path: string): string {
-    const { data } = supabase.storage
-      .from('checklist-files')
-      .getPublicUrl(path);
-      
-    return data.publicUrl;
-  }
-};
 
-// Create necessary tables if they don't exist
-export const setupDatabase = async () => {
-  // This function would typically run server-side or in a migration
-  console.log('Database setup would happen here in a real application');
-};
+  // Delete image
+  deleteImage: async (filePath: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return false;
 
-// Initialize Supabase
-export const initSupabase = async () => {
-  try {
-    // Check if user is authenticated
-    const { data } = await supabase.auth.getSession();
-    
-    if (!data.session) {
-      console.log('User not authenticated');
-    } else {
-      console.log('User authenticated:', data.session.user.id);
+    try {
+      const { error } = await supabase.storage
+        .from('images')
+        .remove([filePath]);
+
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error("Delete image error:", error);
+      return false;
     }
-    
-    // Setup database if needed
-    await setupDatabase();
-
-    return true;
-  } catch (error) {
-    console.error('Error initializing Supabase:', error);
-    return false;
   }
 };

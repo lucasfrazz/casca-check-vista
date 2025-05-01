@@ -1,3 +1,4 @@
+
 import { Checklist, ChecklistType, PendingActionPlan, ActionPlan } from "@/types";
 import { checklistTemplates } from "@/data/checklistTemplates";
 import { stores } from "@/data/stores";
@@ -18,7 +19,7 @@ export function useChecklistActions({
   user
 }: ChecklistActionProps) {
   // Create a new checklist based on template
-  const createChecklist = async (type: ChecklistType, storeId: string): Promise<Checklist | null> => {
+  const createChecklist = async (type: ChecklistType, storeId: string, period?: string): Promise<Checklist | null> => {
     if (!user) {
       toast({
         title: "Erro",
@@ -59,17 +60,19 @@ export function useChecklistActions({
           recurrenceCount: 0,
         })),
         completed: false,
+        period: period || "manhã", // Default to morning if not specified
       };
 
-      // In a real app with Supabase, we'd save to the database
-      // For now, just add to local state
-      setChecklists(prev => [...prev, newChecklist]);
+      // Save to Supabase
+      const savedChecklist = await checklistService.createChecklist(newChecklist);
       
-      // If connected to Supabase, we'd use:
-      // const savedChecklist = await checklistService.createChecklist(newChecklist);
-      // return savedChecklist;
-      
-      return newChecklist;
+      if (savedChecklist) {
+        // Update local state with the saved checklist
+        setChecklists(prev => [...prev, savedChecklist]);
+        return savedChecklist;
+      } else {
+        throw new Error("Failed to save checklist to database");
+      }
     } catch (error) {
       console.error("Error creating checklist:", error);
       toast({
@@ -97,8 +100,8 @@ export function useChecklistActions({
         prev.map(cl => cl.id === checklist.id ? updatedCheckList : cl)
       );
 
-      // In a real app with Supabase, we'd save to the database
-      // await checklistService.saveChecklist(checklist.id);
+      // Save to Supabase
+      await checklistService.saveChecklist(checklist.id);
       
       toast({
         title: "Checklist Salvo",
@@ -120,11 +123,23 @@ export function useChecklistActions({
   const getChecklistsByStore = async (storeId: string): Promise<Checklist[]> => {
     setLoading(true);
     try {
-      // In a real app with Supabase, we'd fetch from the database
-      // return await checklistService.getChecklistsByStore(storeId);
+      // Fetch from Supabase
+      const storeChecklists = await checklistService.getChecklistsByStore(storeId);
       
-      // For now, just filter local state
-      return checklists.filter(cl => cl.storeId === storeId);
+      // Update local state with the fetched checklists
+      const updatedChecklists = [...checklists];
+      storeChecklists.forEach(newCl => {
+        const index = updatedChecklists.findIndex(cl => cl.id === newCl.id);
+        if (index >= 0) {
+          updatedChecklists[index] = newCl;
+        } else {
+          updatedChecklists.push(newCl);
+        }
+      });
+      
+      setChecklists(updatedChecklists);
+      
+      return storeChecklists;
     } catch (error) {
       console.error("Error getting checklists by store:", error);
       toast({
@@ -142,11 +157,23 @@ export function useChecklistActions({
   const getChecklistsByDate = async (date: string): Promise<Checklist[]> => {
     setLoading(true);
     try {
-      // In a real app with Supabase, we'd fetch from the database
-      // return await checklistService.getChecklistsByDate(date);
+      // Fetch from Supabase
+      const dateChecklists = await checklistService.getChecklistsByDate(date);
       
-      // For now, just filter local state
-      return checklists.filter(cl => cl.date === date);
+      // Update local state with the fetched checklists
+      const updatedChecklists = [...checklists];
+      dateChecklists.forEach(newCl => {
+        const index = updatedChecklists.findIndex(cl => cl.id === newCl.id);
+        if (index >= 0) {
+          updatedChecklists[index] = newCl;
+        } else {
+          updatedChecklists.push(newCl);
+        }
+      });
+      
+      setChecklists(updatedChecklists);
+      
+      return dateChecklists;
     } catch (error) {
       console.error("Error getting checklists by date:", error);
       toast({
@@ -164,11 +191,23 @@ export function useChecklistActions({
   const getChecklistsByType = async (type: ChecklistType): Promise<Checklist[]> => {
     setLoading(true);
     try {
-      // In a real app with Supabase, we'd fetch from the database
-      // return await checklistService.getChecklistsByType(type);
+      // Fetch from Supabase
+      const typeChecklists = await checklistService.getChecklistsByType(type);
       
-      // For now, just filter local state
-      return checklists.filter(cl => cl.type === type);
+      // Update local state with the fetched checklists
+      const updatedChecklists = [...checklists];
+      typeChecklists.forEach(newCl => {
+        const index = updatedChecklists.findIndex(cl => cl.id === newCl.id);
+        if (index >= 0) {
+          updatedChecklists[index] = newCl;
+        } else {
+          updatedChecklists.push(newCl);
+        }
+      });
+      
+      setChecklists(updatedChecklists);
+      
+      return typeChecklists;
     } catch (error) {
       console.error("Error getting checklists by type:", error);
       toast({
@@ -226,8 +265,13 @@ export function useChecklistActions({
         });
       });
 
-      // In a real app with Supabase, we'd save to the database
-      // await checklistService.updateChecklistItem(itemId, status, justification, photoUrl);
+      // Update in Supabase
+      await checklistService.updateChecklistItem(
+        itemId, 
+        status, 
+        justification, 
+        photoUrl
+      );
       
     } catch (error) {
       console.error("Error updating checklist item:", error);
@@ -252,18 +296,23 @@ export function useChecklistActions({
 
     try {
       const timestamp = new Date().toISOString();
-      const actionPlanId = `ap-${Date.now()}`;
 
-      const actionPlan: ActionPlan = {
-        id: actionPlanId,
+      const actionPlanData: Omit<ActionPlan, 'id'> = {
         description,
         status: "pending",
         createdAt: timestamp,
         updatedAt: timestamp,
         userId: user.id,
         userName: user.name,
-        checklistItemId: itemId,
+        checklistItemId: itemId
       };
+
+      // Add to Supabase
+      const savedActionPlan = await actionPlanService.addActionPlan(actionPlanData);
+      
+      if (!savedActionPlan) {
+        throw new Error("Failed to save action plan");
+      }
 
       // Update the checklist item with the action plan
       setChecklists(prev => {
@@ -275,7 +324,7 @@ export function useChecklistActions({
             
             return {
               ...item,
-              actionPlan,
+              actionPlan: savedActionPlan,
             };
           });
 
@@ -286,44 +335,15 @@ export function useChecklistActions({
         });
       });
 
-      // Add to pending plans
-      const checklist = checklists.find(cl => cl.id === checklistId);
-      if (!checklist) return;
-      
-      const item = checklist.items.find(it => it.id === itemId);
-      if (!item) return;
-      
-      const store = stores.find(s => s.id === checklist.storeId);
-      if (!store) return;
-
-      const newPendingPlan: PendingActionPlan = {
-        id: actionPlanId,
-        description,
-        createdAt: timestamp,
-        daysPending: 0,
-        storeId: checklist.storeId,
-        storeName: store.name,
-        checklistType: checklist.type,
-        itemDescription: item.description,
-      };
-
-      setPendingPlans(prev => [...prev, newPendingPlan]);
-      
-      // In a real app with Supabase, we'd save to the database
-      // await actionPlanService.addActionPlan({
-      //   description,
-      //   status: "pending",
-      //   createdAt: timestamp,
-      //   updatedAt: timestamp,
-      //   userId: user.id,
-      //   userName: user.name,
-      //   checklistItemId: itemId,
-      // });
-      
       toast({
         title: "Plano de Ação Criado",
         description: "O plano de ação foi registrado com sucesso.",
       });
+      
+      // Refresh pending plans
+      const updatedPlans = await getPendingActionPlans();
+      setPendingPlans(updatedPlans);
+      
     } catch (error) {
       console.error("Error adding action plan:", error);
       toast({
@@ -340,12 +360,13 @@ export function useChecklistActions({
   const getPendingActionPlans = async (): Promise<PendingActionPlan[]> => {
     setLoading(true);
     try {
-      // In a real app with Supabase, we'd fetch from the database
-      // const data = await actionPlanService.getPendingActionPlans();
-      // return data;
+      // Fetch from Supabase
+      const plans = await actionPlanService.getPendingActionPlans();
       
-      // For now, just return local state
-      return pendingPlans;
+      // Update local state
+      setPendingPlans(plans);
+      
+      return plans;
     } catch (error) {
       console.error("Error getting pending action plans:", error);
       toast({
@@ -410,18 +431,18 @@ export function useChecklistActions({
         });
       });
 
+      // Update in Supabase
+      await actionPlanService.reviewActionPlan(
+        planId, 
+        status, 
+        user.id, 
+        user.name, 
+        comment
+      );
+      
       // Permanently remove from pending plans if approved
       if (status === "approved") {
         setPendingPlans(prev => prev.filter(plan => plan.id !== planId));
-        
-        // In a real app, we would update in Supabase
-        await actionPlanService.reviewActionPlan(
-          planId, 
-          status, 
-          user.id, 
-          user.name, 
-          comment
-        );
         
         toast({
           title: "Plano de Ação Aprovado",
@@ -448,13 +469,13 @@ export function useChecklistActions({
     }
   };
 
-  // Upload an image for a checklist item - updated with better error handling and logging
+  // Upload an image for a checklist item
   const uploadImage = async (file: File, checklistId: string, itemId: string): Promise<string | null> => {
     setLoading(true);
     try {
       console.log("Starting image upload:", { checklistId, itemId, fileName: file.name });
       
-      // In a real app with Supabase, we'd upload to storage
+      // Upload to Supabase storage
       const photoUrl = await storageService.uploadImage(file, checklistId, itemId);
       console.log("Image upload result:", photoUrl);
       
@@ -462,7 +483,6 @@ export function useChecklistActions({
         throw new Error("Failed to upload image");
       }
       
-      // For now, we'll use a mock URL that will display correctly
       return photoUrl;
     } catch (error) {
       console.error("Error uploading image:", error);
