@@ -1,7 +1,27 @@
+
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
 import { Checklist, ActionPlan } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+
+// Initialize Supabase function (called from main.tsx)
+export const initSupabase = async () => {
+  try {
+    // Test connection by pinging the API
+    const { error } = await supabase.from('colaboradores').select('count').limit(1);
+    
+    if (error) {
+      console.error("Supabase connection error:", error);
+      return false;
+    }
+    
+    console.log("Supabase connection successful");
+    return true;
+  } catch (err) {
+    console.error("Error initializing Supabase:", err);
+    return false;
+  }
+};
 
 // Auth service
 export const authService = {

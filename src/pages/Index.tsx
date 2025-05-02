@@ -13,7 +13,7 @@ const Index = () => {
     const checkConnection = async () => {
       try {
         // Test connection by pinging the API
-        const { error } = await supabase.from('colaboradores').select('count').limit(1);
+        const { error } = await supabase.from('colaboradores').select('count', { count: 'exact' }).limit(1);
         
         if (error) {
           console.error("Supabase connection error:", error);
