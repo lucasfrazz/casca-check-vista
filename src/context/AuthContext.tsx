@@ -1,6 +1,6 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { User, UnidadeType, mapDatabaseUserToAppUser } from "@/types";
+import { User, UnidadeType } from "@/types";
 import { authService } from "@/services/supabase";
 import { toast } from "@/components/ui/use-toast";
 
@@ -57,6 +57,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userData);
       setIsAuthenticated(true);
       
+      // Save to localStorage for persistence
+      await authService.saveCurrentUser(userData);
+      
       return true;
     } catch (error) {
       if (error instanceof Error) {
@@ -106,6 +109,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Remove user from localStorage
+    localStorage.removeItem('currentUser');
+    
     await authService.logout();
     setUser(null);
     setIsAuthenticated(false);

@@ -1,8 +1,9 @@
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
-import { Checklist, ActionPlan, User, ChecklistType, PeriodoType, DatabaseUser, DatabaseChecklist, mapDatabaseUserToAppUser, mapDatabaseChecklistToAppChecklist } from "@/types";
+import { Checklist, ActionPlan, User, ChecklistType, PeriodoType, DatabaseUser, DatabaseChecklist } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
+import { mapDatabaseUserToAppUser, mapDatabaseChecklistToAppChecklist, mapDatabaseActionPlanToAppActionPlan } from "@/utils/databaseAdapters";
 
 // Initialize Supabase function (called from main.tsx)
 export const initSupabase = async () => {
@@ -207,21 +208,21 @@ export const checklistService = {
         // Create vistoria1 checklist if it exists
         if (dbChecklist.vistoria1) {
           appChecklists.push(
-            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria1", "manhã")
+            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria1" as ChecklistType, "manhã")
           );
         }
         
         // Create vistoria2 checklist if it exists
         if (dbChecklist.vistoria2) {
           appChecklists.push(
-            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria2", "tarde")
+            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria2" as ChecklistType, "tarde")
           );
         }
         
         // Create vistoria3 checklist if it exists
         if (dbChecklist.vistoria3) {
           appChecklists.push(
-            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria3", "noite")
+            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria3" as ChecklistType, "noite")
           );
         }
       }
@@ -253,21 +254,21 @@ export const checklistService = {
         // Create vistoria1 checklist if it exists
         if (dbChecklist.vistoria1) {
           appChecklists.push(
-            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria1", "manhã")
+            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria1" as ChecklistType, "manhã")
           );
         }
         
         // Create vistoria2 checklist if it exists
         if (dbChecklist.vistoria2) {
           appChecklists.push(
-            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria2", "tarde")
+            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria2" as ChecklistType, "tarde")
           );
         }
         
         // Create vistoria3 checklist if it exists
         if (dbChecklist.vistoria3) {
           appChecklists.push(
-            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria3", "noite")
+            mapDatabaseChecklistToAppChecklist(dbChecklist as DatabaseChecklist, "vistoria3" as ChecklistType, "noite")
           );
         }
       }

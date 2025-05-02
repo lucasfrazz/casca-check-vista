@@ -1,6 +1,6 @@
+
 import { Checklist, ChecklistType, PendingActionPlan, ActionPlan, PeriodoType } from "@/types";
 import { checklistTemplates } from "@/data/checklistTemplates";
-import { stores } from "@/data/stores";
 import { toast } from "@/components/ui/use-toast";
 import { ChecklistActionProps } from "./checklistTypes";
 import { 

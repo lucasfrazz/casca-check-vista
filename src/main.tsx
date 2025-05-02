@@ -3,10 +3,10 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { testSupabaseConnection } from '@/integrations/supabase/client'
+import { initSupabase } from '@/services/supabase'
 
 // Initialize Supabase when app starts
-testSupabaseConnection().catch(error => {
+initSupabase().catch(error => {
   console.error("Failed to initialize Supabase:", error);
 });
 
