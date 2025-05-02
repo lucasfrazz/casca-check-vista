@@ -1,6 +1,6 @@
 
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { User, UnidadeType } from "@/types";
+import { User, UnidadeType, mapDatabaseUserToAppUser } from "@/types";
 import { authService } from "@/services/supabase";
 import { toast } from "@/components/ui/use-toast";
 
