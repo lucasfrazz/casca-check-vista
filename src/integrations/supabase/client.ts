@@ -10,3 +10,19 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Função para testar a conexão com o Supabase
+export const testSupabaseConnection = async () => {
+  try {
+    const { error } = await supabase.from('colaboradores').select('count', { count: 'exact' }).limit(1);
+    if (error) {
+      console.error("Erro na conexão com o Supabase:", error);
+      return false;
+    }
+    console.log("Conexão com o Supabase bem-sucedida");
+    return true;
+  } catch (err) {
+    console.error("Erro ao verificar conexão com o Supabase:", err);
+    return false;
+  }
+};

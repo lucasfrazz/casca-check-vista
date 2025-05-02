@@ -9,7 +9,139 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      admins: {
+        Row: {
+          email: string
+          id: number
+          senha: string
+        }
+        Insert: {
+          email: string
+          id?: number
+          senha: string
+        }
+        Update: {
+          email?: string
+          id?: number
+          senha?: string
+        }
+        Relationships: []
+      }
+      checklists: {
+        Row: {
+          colaborador_id: number
+          data: string
+          foto_vistoria1: string | null
+          foto_vistoria2: string | null
+          foto_vistoria3: string | null
+          id: number
+          reincidencias_vistoria3: number | null
+          status_vistoria3: string | null
+          vistoria1: Json | null
+          vistoria2: Json | null
+          vistoria3: Json | null
+        }
+        Insert: {
+          colaborador_id: number
+          data: string
+          foto_vistoria1?: string | null
+          foto_vistoria2?: string | null
+          foto_vistoria3?: string | null
+          id?: number
+          reincidencias_vistoria3?: number | null
+          status_vistoria3?: string | null
+          vistoria1?: Json | null
+          vistoria2?: Json | null
+          vistoria3?: Json | null
+        }
+        Update: {
+          colaborador_id?: number
+          data?: string
+          foto_vistoria1?: string | null
+          foto_vistoria2?: string | null
+          foto_vistoria3?: string | null
+          id?: number
+          reincidencias_vistoria3?: number | null
+          status_vistoria3?: string | null
+          vistoria1?: Json | null
+          vistoria2?: Json | null
+          vistoria3?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklists_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      colaboradores: {
+        Row: {
+          email: string
+          id: number
+          nome: string
+          senha: string
+          unidade: string
+        }
+        Insert: {
+          email: string
+          id?: number
+          nome: string
+          senha: string
+          unidade: string
+        }
+        Update: {
+          email?: string
+          id?: number
+          nome?: string
+          senha?: string
+          unidade?: string
+        }
+        Relationships: []
+      }
+      planos_acao: {
+        Row: {
+          checklist_id: number
+          data_adiamento: string | null
+          data_envio: string
+          data_recusa: string | null
+          descricao: string
+          id: number
+          resposta_corrigida: string | null
+          status: string
+        }
+        Insert: {
+          checklist_id: number
+          data_adiamento?: string | null
+          data_envio: string
+          data_recusa?: string | null
+          descricao: string
+          id?: number
+          resposta_corrigida?: string | null
+          status: string
+        }
+        Update: {
+          checklist_id?: number
+          data_adiamento?: string | null
+          data_envio?: string
+          data_recusa?: string | null
+          descricao?: string
+          id?: number
+          resposta_corrigida?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_acao_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
