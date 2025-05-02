@@ -1,45 +1,12 @@
-
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
 import { Checklist, ActionPlan } from "@/types";
-
-// Supabase configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-
-let supabase: SupabaseClient | null = null;
-
-export const initSupabase = async () => {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error("Supabase URL or Anon Key not configured.");
-      return null;
-    }
-    
-    supabase = createClient(supabaseUrl, supabaseAnonKey);
-    console.log("Supabase initialized successfully");
-    return supabase;
-  } catch (error) {
-    console.error("Failed to initialize Supabase:", error);
-    return null;
-  }
-};
-
-export const getSupabase = () => {
-  if (!supabase) {
-    // Initialize on demand if not already done
-    initSupabase();
-  }
-  return supabase;
-};
+import { supabase } from "@/integrations/supabase/client";
 
 // Auth service
 export const authService = {
   // Login with email and password
   login: async (email: string, password: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -50,16 +17,32 @@ export const authService = {
 
       // Get user profile data
       const { data: profileData, error: profileError } = await supabase
-        .from('users')
+        .from('colaboradores')
         .select('*')
         .eq('id', data.user.id)
         .single();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // Check if maybe an admin
+        const { data: adminData, error: adminError } = await supabase
+          .from('admins')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+          
+        if (adminError) throw profileError;
+        
+        return {
+          ...data.user,
+          ...adminData,
+          role: "admin"
+        };
+      }
 
       return {
         ...data.user,
         ...profileData,
+        role: "collaborator"
       };
     } catch (error: any) {
       console.error("Login error:", error.message);
@@ -69,34 +52,22 @@ export const authService = {
 
   // Register a new user
   register: async (name: string, email: string, password: string, unidade: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
     try {
       // Create auth user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            name,
+            unidade
+          }
+        }
       });
 
       if (error) throw error;
 
       if (!data.user) throw new Error("User registration failed");
-
-      // Create profile record
-      const { error: profileError } = await supabase
-        .from('users')
-        .insert([
-          {
-            id: data.user.id,
-            name,
-            email,
-            role: "collaborator",
-            unidade,
-          }
-        ]);
-
-      if (profileError) throw profileError;
 
       return data.user;
     } catch (error: any) {
@@ -107,9 +78,6 @@ export const authService = {
 
   // Logout
   logout: async () => {
-    const supabase = getSupabase();
-    if (!supabase) return;
-
     try {
       await supabase.auth.signOut();
     } catch (error) {
@@ -119,22 +87,42 @@ export const authService = {
 
   // Get current session
   getCurrentUser: async () => {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
     try {
       const { data } = await supabase.auth.getSession();
       
       if (!data.session) return null;
 
-      // Get user profile data
-      const { data: profileData } = await supabase
-        .from('users')
+      // Get user profile data - first try collaborador
+      const { data: profileData, error: profileError } = await supabase
+        .from('colaboradores')
         .select('*')
         .eq('id', data.session.user.id)
         .single();
 
-      return profileData;
+      if (!profileError) {
+        return {
+          ...data.session.user,
+          ...profileData,
+          role: "collaborator"
+        };
+      }
+
+      // If not collaborador, try admin
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', data.session.user.id)
+        .single();
+        
+      if (!adminError) {
+        return {
+          ...data.session.user,
+          ...adminData,
+          role: "admin"
+        };
+      }
+
+      return null;
     } catch (error) {
       console.error("Get current user error:", error);
       return null;
@@ -146,9 +134,6 @@ export const authService = {
 export const checklistService = {
   // Create a new checklist
   createChecklist: async (checklist: Checklist) => {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
     try {
       // Insert the checklist
       const { data, error } = await supabase
@@ -200,9 +185,6 @@ export const checklistService = {
 
   // Save a completed checklist
   saveChecklist: async (checklistId: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return false;
-
     try {
       const { error } = await supabase
         .from('checklists')
@@ -219,9 +201,6 @@ export const checklistService = {
 
   // Get checklists by store
   getChecklistsByStore: async (storeId: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return [];
-
     try {
       // Get checklists for the store
       const { data: checklists, error } = await supabase
@@ -257,9 +236,6 @@ export const checklistService = {
 
   // Get checklists by date
   getChecklistsByDate: async (date: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return [];
-
     try {
       // Get checklists for the date
       const { data: checklists, error } = await supabase
@@ -295,9 +271,6 @@ export const checklistService = {
 
   // Get checklists by type
   getChecklistsByType: async (type: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return [];
-
     try {
       // Get checklists for the type
       const { data: checklists, error } = await supabase
@@ -333,9 +306,6 @@ export const checklistService = {
 
   // Update checklist item
   updateChecklistItem: async (itemId: string, status: "sim" | "nao", justification?: string, photoUrl?: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return false;
-
     try {
       const updateData: any = {
         status,
@@ -368,9 +338,6 @@ export const checklistService = {
 export const actionPlanService = {
   // Add action plan
   addActionPlan: async (actionPlan: Omit<ActionPlan, 'id'>) => {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
     try {
       const { data, error } = await supabase
         .from('action_plans')
@@ -388,9 +355,6 @@ export const actionPlanService = {
 
   // Get pending action plans
   getPendingActionPlans: async () => {
-    const supabase = getSupabase();
-    if (!supabase) return [];
-
     try {
       // Get pending action plans
       const { data, error } = await supabase
@@ -459,9 +423,6 @@ export const actionPlanService = {
     reviewerName: string,
     comment?: string
   ) => {
-    const supabase = getSupabase();
-    if (!supabase) return false;
-
     try {
       const { error } = await supabase
         .from('action_plans')
@@ -487,9 +448,6 @@ export const actionPlanService = {
 export const storageService = {
   // Upload image
   uploadImage: async (file: File, checklistId: string, itemId: string): Promise<string | null> => {
-    const supabase = getSupabase();
-    if (!supabase) return null;
-
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${checklistId}/${itemId}-${Date.now()}.${fileExt}`;
@@ -515,9 +473,6 @@ export const storageService = {
 
   // Delete image
   deleteImage: async (filePath: string) => {
-    const supabase = getSupabase();
-    if (!supabase) return false;
-
     try {
       const { error } = await supabase.storage
         .from('images')

@@ -1,5 +1,7 @@
+
 export type UserRole = "admin" | "collaborator";
 export type UnidadeType = "Asa Norte" | "Asa Sul" | "Sudoeste" | "Águas Claras";
+export type PeriodoType = "manhã" | "tarde" | "noite";
 
 export interface User {
   id: string;
@@ -8,6 +10,7 @@ export interface User {
   role: UserRole;
   storeId?: string;
   unidade?: UnidadeType;
+  storeIds?: string[]; // For admins who can manage multiple stores
 }
 
 export interface Store {
@@ -35,7 +38,7 @@ export interface Checklist {
   userName: string;
   items: ChecklistItem[];
   completed: boolean;
-  period?: "manhã" | "tarde" | "noite";
+  period?: PeriodoType;
 }
 
 export interface ActionPlan {

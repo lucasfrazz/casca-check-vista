@@ -9,7 +9,6 @@ import { UserPlus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UnidadeType } from "@/types";
 import { toast } from "@/components/ui/use-toast";
-import { authService } from "@/services/supabase";
 
 interface RegisterFormProps {
   onToggleForm: () => void;
@@ -50,14 +49,12 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
     
     try {
       console.log("Registering user with:", { name, email, password, unidade });
-      // First try the auth service directly
-      const registrationSuccess = await authService.registerUser(email, password, name, unidade);
       
-      // Then use the auth context
-      const contextSuccess = await register(name, email, password, unidade);
+      // Use the auth context register function
+      const success = await register(name, email, password, unidade);
       
-      // If either method worked
-      if (registrationSuccess || contextSuccess) {
+      // If successful
+      if (success) {
         toast({
           title: "Conta criada",
           description: "Sua conta foi criada com sucesso!"

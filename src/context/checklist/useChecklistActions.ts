@@ -1,5 +1,4 @@
-
-import { Checklist, ChecklistType, PendingActionPlan, ActionPlan } from "@/types";
+import { Checklist, ChecklistType, PendingActionPlan, ActionPlan, PeriodoType } from "@/types";
 import { checklistTemplates } from "@/data/checklistTemplates";
 import { stores } from "@/data/stores";
 import { toast } from "@/components/ui/use-toast";
@@ -60,7 +59,7 @@ export function useChecklistActions({
           recurrenceCount: 0,
         })),
         completed: false,
-        period: period || "manhã", // Default to morning if not specified
+        period: (period as PeriodoType) || "manhã", // Default to morning if not specified
       };
 
       // Save to Supabase

@@ -1,8 +1,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSupabase } from "@/services/supabase";
 import { Spinner } from "@/components/ui/spinner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -12,16 +12,8 @@ const Index = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        // Check if we can connect to Supabase
-        const supabase = getSupabase();
-        
-        if (!supabase) {
-          setError("Não foi possível conectar ao Supabase. Verifique as configurações.");
-          return;
-        }
-        
         // Test connection by pinging the API
-        const { error } = await supabase.from('checklists').select('count').limit(1);
+        const { error } = await supabase.from('colaboradores').select('count').limit(1);
         
         if (error) {
           console.error("Supabase connection error:", error);
@@ -60,7 +52,7 @@ const Index = () => {
           <h1 className="text-xl font-bold text-red-600 mb-4">Erro de Conexão</h1>
           <p className="text-gray-700 mb-6">{error}</p>
           <p className="text-gray-500 text-sm">
-            Verifique se as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão configuradas corretamente.
+            Supabase URL: https://wnujywpxufgaxgfxamxz.supabase.co
           </p>
         </div>
       </div>

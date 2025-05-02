@@ -50,12 +50,18 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
           
           if (user.role === "admin") {
             // Admin can see all checklists
-            const storeChecklists = await Promise.all(
-              (user.stores || []).map(storeId => 
-                checklistService.getChecklistsByStore(storeId)
-              )
-            );
-            fetchedChecklists = storeChecklists.flat();
+            if (user.storeIds && user.storeIds.length > 0) {
+              const storeChecklists = await Promise.all(
+                user.storeIds.map(storeId => 
+                  checklistService.getChecklistsByStore(storeId)
+                )
+              );
+              fetchedChecklists = storeChecklists.flat();
+            } else {
+              // If no specific stores, get all checklists
+              const today = new Date().toISOString().split('T')[0];
+              fetchedChecklists = await checklistService.getChecklistsByDate(today);
+            }
           } else if (user.role === "collaborator" && user.storeId) {
             // Collaborators only see their store's checklists
             fetchedChecklists = await checklistService.getChecklistsByStore(user.storeId);
