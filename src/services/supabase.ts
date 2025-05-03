@@ -29,47 +29,67 @@ export const authService = {
   // Login with email and password
   login: async (email: string, password: string): Promise<User | null> => {
     try {
-      // In real auth we would use supabase.auth.signInWithPassword
-      // But for this project, we'll check directly from colaboradores table
+      console.log("Tentando login com:", email);
+      
+      // Primeiro, tenta login como admin
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('email', email)
+        .single();
+        
+      if (!adminError && adminData) {
+        console.log("Admin encontrado:", adminData);
+        
+        // Verificar senha - observe que isso deve ser feito com hash no futuro
+        if (adminData.senha === password) {
+          const userData = mapDatabaseUserToAppUser(adminData as DatabaseUser, "admin");
+          console.log("Login de admin bem-sucedido:", userData);
+          return userData;
+        } else {
+          throw new Error("Senha incorreta");
+        }
+      }
+      
+      // Se não for admin, tenta como colaborador
       const { data: profileData, error: profileError } = await supabase
         .from('colaboradores')
         .select('*')
         .eq('email', email)
-        .eq('senha', password)
         .single();
 
-      if (profileError) {
-        // Check if maybe an admin
-        const { data: adminData, error: adminError } = await supabase
-          .from('admins')
-          .select('*')
-          .eq('email', email)
-          .eq('senha', password)
-          .single();
-          
-        if (adminError) throw new Error("Usuário não encontrado ou senha incorreta");
-        
-        return mapDatabaseUserToAppUser(adminData as DatabaseUser, "admin");
+      if (profileError || !profileData) {
+        console.error("Usuário não encontrado:", profileError);
+        throw new Error("Usuário não encontrado ou senha incorreta");
       }
-
-      return mapDatabaseUserToAppUser(profileData as DatabaseUser, "collaborator");
+      
+      // Verificar senha - observe que isso deve ser feito com hash no futuro
+      if (profileData.senha === password) {
+        const userData = mapDatabaseUserToAppUser(profileData as DatabaseUser, "collaborator");
+        console.log("Login de colaborador bem-sucedido:", userData);
+        return userData;
+      } else {
+        throw new Error("Senha incorreta");
+      }
     } catch (error: any) {
       console.error("Login error:", error.message);
-      return null;
+      throw error;
     }
   },
 
   // Register a new user
   register: async (name: string, email: string, password: string, unidade: string): Promise<User | null> => {
     try {
+      console.log("Registrando novo usuário:", { name, email, unidade });
+      
       // Check if user already exists
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: existingError } = await supabase
         .from('colaboradores')
         .select('*')
         .eq('email', email)
         .single();
         
-      if (existingUser) {
+      if (!existingError && existingUser) {
         throw new Error("Este email já está em uso");
       }
 
@@ -87,12 +107,20 @@ export const authService = {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao inserir colaborador:", error);
+        throw error;
+      }
 
+      if (!data) {
+        throw new Error("Falha ao criar conta - nenhum dado retornado");
+      }
+
+      console.log("Colaborador registrado com sucesso:", data);
       return mapDatabaseUserToAppUser(data as DatabaseUser, "collaborator");
     } catch (error: any) {
       console.error("Registration error:", error.message);
-      return null;
+      throw error;
     }
   },
 
@@ -140,6 +168,8 @@ export const checklistService = {
   // Create a new checklist
   createChecklist: async (checklist: Checklist) => {
     try {
+      console.log("Criando novo checklist:", checklist);
+      
       // Convert app model to database model
       const dbChecklist: any = {
         colaborador_id: parseInt(checklist.userId),
@@ -156,6 +186,8 @@ export const checklistService = {
         dbChecklist.status_vistoria3 = checklist.completed ? "completed" : "pending";
       }
 
+      console.log("Dados a serem inseridos no banco:", dbChecklist);
+
       // Insert the checklist
       const { data, error } = await supabase
         .from('checklists')
@@ -163,41 +195,63 @@ export const checklistService = {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao inserir checklist:", error);
+        throw error;
+      }
 
+      if (!data) {
+        throw new Error("Falha ao criar checklist - nenhum dado retornado");
+      }
+
+      console.log("Checklist criado com sucesso:", data);
       return mapDatabaseChecklistToAppChecklist(data as DatabaseChecklist, checklist.type, checklist.period);
     } catch (error) {
       console.error("Create checklist error:", error);
-      return null;
+      throw error;
     }
   },
 
   // Save a completed checklist
   saveChecklist: async (checklistId: string) => {
     try {
+      console.log("Salvando checklist completado:", checklistId);
+      
       const { error } = await supabase
         .from('checklists')
         .update({ status_vistoria3: "completed" })
         .eq('id', parseInt(checklistId));
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao atualizar checklist:", error);
+        throw error;
+      }
+      
+      console.log("Checklist salvo com sucesso");
       return true;
     } catch (error) {
       console.error("Save checklist error:", error);
-      return false;
+      throw error;
     }
   },
 
   // Get checklists by store
   getChecklistsByStore: async (storeId: string) => {
     try {
+      console.log("Buscando checklists para a loja:", storeId);
+      
       // Get checklists for the colaborador
       const { data: dbChecklists, error } = await supabase
         .from('checklists')
         .select('*')
         .eq('colaborador_id', parseInt(storeId));
 
-      if (error) throw error;
+      if (error) {
+        console.error("Erro ao buscar checklists:", error);
+        throw error;
+      }
+      
+      console.log(`Encontrados ${dbChecklists?.length || 0} checklists para a loja`);
       if (!dbChecklists || dbChecklists.length === 0) return [];
 
       // Convert DB checklists to app model
@@ -205,6 +259,8 @@ export const checklistService = {
       const appChecklists: Checklist[] = [];
       
       for (const dbChecklist of dbChecklists) {
+        console.log("Processando checklist:", dbChecklist.id);
+        
         // Create vistoria1 checklist if it exists
         if (dbChecklist.vistoria1) {
           appChecklists.push(
@@ -227,6 +283,7 @@ export const checklistService = {
         }
       }
 
+      console.log(`Retornando ${appChecklists.length} checklists processados`);
       return appChecklists;
     } catch (error) {
       console.error("Get checklists by store error:", error);

@@ -32,6 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userData) {
           setUser(userData);
           setIsAuthenticated(true);
+          console.log("Sessão recuperada para:", userData.name);
+        } else {
+          console.log("Nenhuma sessão encontrada");
         }
       } catch (error) {
         console.error("Session check error:", error);
@@ -47,6 +50,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Email e senha são obrigatórios");
       }
       
+      console.log("Tentando fazer login com:", { email });
+      
       const userData = await authService.login(email, password);
       
       if (!userData) {
@@ -60,9 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Save to localStorage for persistence
       await authService.saveCurrentUser(userData);
       
+      console.log("Login bem-sucedido:", userData);
       return true;
     } catch (error) {
       if (error instanceof Error) {
+        console.error("Erro no login:", error.message);
         toast({
           title: "Erro no login",
           description: error.message,
@@ -79,11 +86,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Nome, email, senha e unidade são obrigatórios");
       }
       
+      console.log("Tentando registrar:", { name, email, unidade });
+      
       const userData = await authService.register(name, email, password, unidade);
       
       if (!userData) {
         throw new Error("Falha ao registrar usuário");
       }
+      
+      console.log("Registro bem-sucedido, tentando fazer login");
       
       // Set user in state - for demo only, in production should redirect to login
       const loginResult = await login(email, password);
@@ -98,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return loginResult;
     } catch (error) {
       if (error instanceof Error) {
+        console.error("Erro no registro:", error.message);
         toast({
           title: "Erro no registro",
           description: error.message,
@@ -115,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    
+    console.log("Usuário desconectado");
   };
 
   return (

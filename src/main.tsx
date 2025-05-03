@@ -6,7 +6,9 @@ import './index.css'
 import { initSupabase } from '@/services/supabase'
 
 // Initialize Supabase when app starts
-initSupabase().catch(error => {
+initSupabase().then(success => {
+  console.log("Supabase initialization:", success ? "successful" : "failed");
+}).catch(error => {
   console.error("Failed to initialize Supabase:", error);
 });
 

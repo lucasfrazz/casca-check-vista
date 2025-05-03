@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ export function RegisterForm({ onToggleForm }: RegisterFormProps) {
     setIsLoading(true);
     
     try {
-      console.log("Registering user with:", { name, email, password, unidade });
+      console.log("Registrando usuário com:", { name, email, password, unidade });
       
       // Use the auth context register function
       const success = await register(name, email, password, unidade);
