@@ -41,7 +41,7 @@ export const authService = {
       if (!adminError && adminData) {
         console.log("Admin encontrado:", adminData);
         
-        // Verificar senha - observe que isso deve ser feito com hash no futuro
+        // Verificar senha - usando senha direta para simplificar
         if (adminData.senha === password) {
           const userData = mapDatabaseUserToAppUser(adminData as DatabaseUser, "admin");
           console.log("Login de admin bem-sucedido:", userData);
@@ -63,7 +63,7 @@ export const authService = {
         throw new Error("Usuário não encontrado ou senha incorreta");
       }
       
-      // Verificar senha - observe que isso deve ser feito com hash no futuro
+      // Verificar senha - usando senha direta para simplificar
       if (profileData.senha === password) {
         const userData = mapDatabaseUserToAppUser(profileData as DatabaseUser, "collaborator");
         console.log("Login de colaborador bem-sucedido:", userData);

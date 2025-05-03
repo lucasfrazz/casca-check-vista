@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { StoreSelector } from "@/components/StoreSelector";
@@ -11,27 +10,34 @@ import { useNavigate } from "react-router-dom";
 import { ChecklistType } from "@/types";
 import { PendingNotification } from "@/components/PendingNotification";
 import { Spinner } from "@/components/ui/spinner";
+import { toast } from "@/components/ui/use-toast";
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { createChecklist, loading } = useChecklists();
   const navigate = useNavigate();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // For collaborators, pre-select their store
+  // Para colaboradores, pré-seleciona a loja deles
   useEffect(() => {
-    if (user?.role === "collaborator" && user.storeId) {
-      setSelectedStore(user.storeId);
+    if (!authLoading && user) {
+      if (user.role === "collaborator" && user.storeId) {
+        console.log(`Pré-selecionando a loja do colaborador: ${user.storeId}`);
+        setSelectedStore(user.storeId);
+      }
+      setIsInitialized(true);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
-  // Get available stores based on user role
+  // Obter lojas disponíveis com base no papel do usuário
   const availableStores = user?.role === "admin" 
     ? stores 
     : stores.filter(store => store.id === user?.storeId);
 
   const handleStoreSelect = (storeId: string) => {
+    console.log(`Store selecionada: ${storeId}`);
     setSelectedStore(storeId);
   };
 
@@ -40,16 +46,40 @@ const DashboardPage = () => {
     
     try {
       setIsCreating(true);
+      console.log(`Criando checklist ${type} para loja ${selectedStore}`);
       const newChecklist = await createChecklist(type, selectedStore);
       if (newChecklist) {
+        console.log(`Checklist criado com sucesso: ${newChecklist.id}`);
         navigate(`/checklist/${newChecklist.id}`);
       }
     } catch (error) {
-      console.error("Error creating checklist:", error);
+      console.error("Erro ao criar checklist:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível criar o checklist. Tente novamente.",
+        variant: "destructive"
+      });
     } finally {
       setIsCreating(false);
     }
   };
+
+  // Enquanto o auth está carregando, mostra um spinner
+  if (authLoading || !isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="container mx-auto py-6 px-4">
+          <div className="flex justify-center items-center" style={{height: "50vh"}}>
+            <div className="flex flex-col items-center gap-4">
+              <Spinner size="lg" />
+              <p className="text-gray-500">Carregando informações...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

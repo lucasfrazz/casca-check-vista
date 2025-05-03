@@ -10,6 +10,7 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, unidade: UnidadeType) => Promise<boolean>;
   logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,16 +19,19 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => false,
   logout: () => {},
   isAuthenticated: false,
+  isLoading: true
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check for current session
     const checkSession = async () => {
       try {
+        setIsLoading(true);
         const userData = await authService.getCurrentUser();
         if (userData) {
           setUser(userData);
@@ -35,9 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log("Sessão recuperada para:", userData.name);
         } else {
           console.log("Nenhuma sessão encontrada");
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (error) {
         console.error("Session check error:", error);
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -132,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, register, logout, isAuthenticated, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
