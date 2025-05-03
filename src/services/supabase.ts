@@ -42,7 +42,7 @@ export const authService = {
         console.log("Admin encontrado:", adminData);
         
         // Verificar senha - usando senha direta para simplificar
-        if (adminData.senha === password) {
+        if (password === adminData.senha) {
           const userData = mapDatabaseUserToAppUser(adminData as DatabaseUser, "admin");
           console.log("Login de admin bem-sucedido:", userData);
           return userData;
@@ -64,7 +64,7 @@ export const authService = {
       }
       
       // Verificar senha - usando senha direta para simplificar
-      if (profileData.senha === password) {
+      if (password === profileData.senha) {
         const userData = mapDatabaseUserToAppUser(profileData as DatabaseUser, "collaborator");
         console.log("Login de colaborador bem-sucedido:", userData);
         return userData;
@@ -135,7 +135,7 @@ export const authService = {
     }
   },
 
-  // Get current session
+  // Get current user
   getCurrentUser: async () => {
     try {
       // Get from localStorage or similar
@@ -145,6 +145,8 @@ export const authService = {
       try {
         return JSON.parse(savedUserString) as User;
       } catch (e) {
+        console.error("Erro ao analisar dados do usuário:", e);
+        localStorage.removeItem('currentUser');  // Remover dados inválidos
         return null;
       }
     } catch (error) {

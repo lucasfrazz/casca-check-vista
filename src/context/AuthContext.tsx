@@ -34,9 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         const userData = await authService.getCurrentUser();
         if (userData) {
+          console.log("Sessão recuperada para:", userData.name);
           setUser(userData);
           setIsAuthenticated(true);
-          console.log("Sessão recuperada para:", userData.name);
         } else {
           console.log("Nenhuma sessão encontrada");
           setIsAuthenticated(false);
@@ -47,11 +47,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(false);
         setUser(null);
       } finally {
+        // Garantir que isLoading sempre seja definido como false, mesmo em caso de erro
         setIsLoading(false);
       }
     };
     
+    // Definir um timeout para garantir que isLoading não ficará preso como true
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Timeout de verificação de sessão atingido");
+        setIsLoading(false);
+      }
+    }, 3000);
+    
     checkSession();
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -61,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log("Tentando fazer login com:", { email });
+      setIsLoading(true);
       
       const userData = await authService.login(email, password);
       
@@ -87,6 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -97,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       console.log("Tentando registrar:", { name, email, unidade });
+      setIsLoading(true);
       
       const userData = await authService.register(name, email, password, unidade);
       
@@ -127,18 +142,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = async () => {
-    // Remove user from localStorage
-    localStorage.removeItem('currentUser');
-    
-    await authService.logout();
-    setUser(null);
-    setIsAuthenticated(false);
-    
-    console.log("Usuário desconectado");
+    try {
+      // Remove user from localStorage
+      localStorage.removeItem('currentUser');
+      
+      await authService.logout();
+      setUser(null);
+      setIsAuthenticated(false);
+      
+      console.log("Usuário desconectado");
+    } catch (error) {
+      console.error("Erro ao desconectar:", error);
+      toast({
+        title: "Erro ao sair",
+        description: "Não foi possível desconectar corretamente",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

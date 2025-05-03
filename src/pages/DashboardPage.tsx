@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { StoreSelector } from "@/components/StoreSelector";
@@ -14,22 +15,45 @@ import { toast } from "@/components/ui/use-toast";
 
 const DashboardPage = () => {
   const { user, isLoading: authLoading } = useAuth();
-  const { createChecklist, loading } = useChecklists();
+  const { createChecklist, loading: checklistLoading } = useChecklists();
   const navigate = useNavigate();
   const [selectedStore, setSelectedStore] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Definir um timeout para evitar loading infinito
+  useEffect(() => {
+    if ((authLoading || !isInitialized) && !loadTimeout) {
+      const timeout = setTimeout(() => {
+        console.log("Loading timeout reached, forcing initialization");
+        setIsInitialized(true);
+      }, 5000);
+      setLoadTimeout(timeout);
+    }
+
+    return () => {
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+      }
+    };
+  }, [authLoading, isInitialized, loadTimeout]);
 
   // Para colaboradores, pré-seleciona a loja deles
   useEffect(() => {
     if (!authLoading && user) {
+      console.log("User carregado no dashboard:", user);
       if (user.role === "collaborator" && user.storeId) {
         console.log(`Pré-selecionando a loja do colaborador: ${user.storeId}`);
         setSelectedStore(user.storeId);
       }
       setIsInitialized(true);
+      
+      if (loadTimeout) {
+        clearTimeout(loadTimeout);
+      }
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, loadTimeout]);
 
   // Obter lojas disponíveis com base no papel do usuário
   const availableStores = user?.role === "admin" 
@@ -64,8 +88,8 @@ const DashboardPage = () => {
     }
   };
 
-  // Enquanto o auth está carregando, mostra um spinner
-  if (authLoading || !isInitialized) {
+  // Enquanto o auth está carregando, mostra um spinner com timeout
+  if ((authLoading || !isInitialized) && !user) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -89,7 +113,7 @@ const DashboardPage = () => {
       <main className="container mx-auto py-6 px-4">
         <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
         
-        {loading || isCreating ? (
+        {(checklistLoading || isCreating) ? (
           <div className="flex justify-center items-center" style={{height: "50vh"}}>
             <div className="flex flex-col items-center gap-4">
               <Spinner size="lg" />

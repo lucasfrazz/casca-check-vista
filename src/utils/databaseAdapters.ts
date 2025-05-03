@@ -10,17 +10,17 @@ export const mapDatabaseUserToAppUser = (dbUser: DatabaseUser, role: "admin" | "
       email: dbUser.email,
       role: "admin",
       storeId: null,
-      storeName: "Administração",
+      unidade: "Administração"
     };
   } else {
     // Para colaboradores
     return {
       id: String(dbUser.id),
-      name: dbUser.nome,
+      name: dbUser.nome || '',
       email: dbUser.email,
       role: "collaborator",
       storeId: String(dbUser.id),
-      storeName: dbUser.unidade,
+      unidade: dbUser.unidade
     };
   }
 };
@@ -51,11 +51,7 @@ export const mapDatabaseChecklistToAppChecklist = (
     period,
     date: dbChecklist.data,
     items: items || {},
-    completed: period === "noite" && dbChecklist.status_vistoria3 === "completed",
-    photoUrl: 
-      period === "manhã" ? dbChecklist.foto_vistoria1 :
-      period === "tarde" ? dbChecklist.foto_vistoria2 :
-      dbChecklist.foto_vistoria3,
+    completed: period === "noite" && dbChecklist.status_vistoria3 === "completed"
   };
 };
 
