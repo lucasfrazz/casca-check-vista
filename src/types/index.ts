@@ -5,10 +5,10 @@ export type PeriodoType = "manhã" | "tarde" | "noite";
 
 // Database types
 export interface DatabaseUser {
-  id: number;
+  id: string | number; // Updated to accept both string and number
   nome?: string;
   email: string;
-  senha: string;
+  senha?: string; // Made optional since it might be missing in some responses
   unidade?: string;
 }
 
@@ -54,7 +54,7 @@ export interface Checklist {
 // Database checklist model
 export interface DatabaseChecklist {
   id: number;
-  colaborador_id: number;
+  colaborador_id: string | number; // Updated to accept both string and number
   data: string;
   foto_vistoria1?: string | null;
   foto_vistoria2?: string | null;
@@ -65,6 +65,9 @@ export interface DatabaseChecklist {
   status_vistoria3?: string;
   reincidencias_vistoria3?: number;
   items?: ChecklistItem[];
+  setor_id?: number;
+  unidade?: string;
+  observacoes?: string;
 }
 
 export interface ActionPlan {

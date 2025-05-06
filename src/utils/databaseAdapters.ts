@@ -36,11 +36,11 @@ export const mapDatabaseChecklistToAppChecklist = (
   let checklistId = String(dbChecklist.id);
   
   if (period === "manhã") {
-    items = dbChecklist.vistoria1;
+    items = dbChecklist.vistoria1 || {};
   } else if (period === "tarde") {
-    items = dbChecklist.vistoria2;
+    items = dbChecklist.vistoria2 || {};
   } else {
-    items = dbChecklist.vistoria3;
+    items = dbChecklist.vistoria3 || {};
   }
   
   // Convert to our app model
