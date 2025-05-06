@@ -1,5 +1,5 @@
 
-import { DatabaseUser, DatabaseChecklist, DatabaseActionPlan, User, Checklist, ActionPlan, ChecklistType, PeriodoType } from "@/types";
+import { DatabaseUser, DatabaseChecklist, DatabaseActionPlan, User, Checklist, ActionPlan, ChecklistType, PeriodoType, UnidadeType } from "@/types";
 
 // Map a database user to our app's user model
 export const mapDatabaseUserToAppUser = (dbUser: DatabaseUser, role: "admin" | "collaborator"): User => {
@@ -10,7 +10,7 @@ export const mapDatabaseUserToAppUser = (dbUser: DatabaseUser, role: "admin" | "
       email: dbUser.email,
       role: "admin",
       storeId: null,
-      unidade: "Administração"
+      unidade: "Águas Claras" as UnidadeType // Fix type error by using a valid UnidadeType
     };
   } else {
     // Para colaboradores
@@ -20,7 +20,7 @@ export const mapDatabaseUserToAppUser = (dbUser: DatabaseUser, role: "admin" | "
       email: dbUser.email,
       role: "collaborator",
       storeId: String(dbUser.id),
-      unidade: dbUser.unidade
+      unidade: (dbUser.unidade as UnidadeType) || "Asa Norte" // Cast to UnidadeType with a default
     };
   }
 };
@@ -51,7 +51,9 @@ export const mapDatabaseChecklistToAppChecklist = (
     period,
     date: dbChecklist.data,
     items: items || {},
-    completed: period === "noite" && dbChecklist.status_vistoria3 === "completed"
+    completed: period === "noite" && dbChecklist.status_vistoria3 === "completed",
+    storeId: String(dbChecklist.colaborador_id), // Adding required storeId property
+    userName: "Colaborador" // Adding required userName property
   };
 };
 

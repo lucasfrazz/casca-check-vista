@@ -12,60 +12,83 @@ export type Database = {
       admins: {
         Row: {
           email: string
-          id: number
+          id: string | null
           senha: string
         }
         Insert: {
           email: string
-          id?: number
+          id?: string | null
           senha: string
         }
         Update: {
           email?: string
-          id?: number
+          id?: string | null
           senha?: string
         }
         Relationships: []
       }
-      checklists: {
+      checklist_itens: {
         Row: {
-          colaborador_id: number
-          data: string
-          foto_vistoria1: string | null
-          foto_vistoria2: string | null
-          foto_vistoria3: string | null
+          atividade: string
+          checklist_id: number | null
+          horario: string | null
           id: number
-          reincidencias_vistoria3: number | null
-          status_vistoria3: string | null
-          vistoria1: Json | null
-          vistoria2: Json | null
-          vistoria3: Json | null
+          periodo: string
+          reincidencia: boolean | null
+          status: string
         }
         Insert: {
-          colaborador_id: number
-          data: string
-          foto_vistoria1?: string | null
-          foto_vistoria2?: string | null
-          foto_vistoria3?: string | null
+          atividade: string
+          checklist_id?: number | null
+          horario?: string | null
           id?: number
-          reincidencias_vistoria3?: number | null
-          status_vistoria3?: string | null
-          vistoria1?: Json | null
-          vistoria2?: Json | null
-          vistoria3?: Json | null
+          periodo: string
+          reincidencia?: boolean | null
+          status: string
         }
         Update: {
-          colaborador_id?: number
-          data?: string
-          foto_vistoria1?: string | null
-          foto_vistoria2?: string | null
-          foto_vistoria3?: string | null
+          atividade?: string
+          checklist_id?: number | null
+          horario?: string | null
           id?: number
-          reincidencias_vistoria3?: number | null
-          status_vistoria3?: string | null
-          vistoria1?: Json | null
-          vistoria2?: Json | null
-          vistoria3?: Json | null
+          periodo?: string
+          reincidencia?: boolean | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_itens_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "checklists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklists: {
+        Row: {
+          colaborador_id: string | null
+          data: string
+          id: number
+          observacoes: string | null
+          setor_id: number | null
+          unidade: string | null
+        }
+        Insert: {
+          colaborador_id?: string | null
+          data: string
+          id?: number
+          observacoes?: string | null
+          setor_id?: number | null
+          unidade?: string | null
+        }
+        Update: {
+          colaborador_id?: string | null
+          data?: string
+          id?: number
+          observacoes?: string | null
+          setor_id?: number | null
+          unidade?: string | null
         }
         Relationships: [
           {
@@ -75,29 +98,63 @@ export type Database = {
             referencedRelation: "colaboradores"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "checklists_setor_id_fkey"
+            columns: ["setor_id"]
+            isOneToOne: false
+            referencedRelation: "setores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklists_unidade_fkey"
+            columns: ["unidade"]
+            isOneToOne: false
+            referencedRelation: "lojas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       colaboradores: {
         Row: {
           email: string
-          id: number
+          id: string
           nome: string
-          senha: string
-          unidade: string
+          unidade: string | null
         }
         Insert: {
           email: string
-          id?: number
+          id: string
           nome: string
-          senha: string
-          unidade: string
+          unidade?: string | null
         }
         Update: {
           email?: string
-          id?: number
+          id?: string
           nome?: string
-          senha?: string
-          unidade?: string
+          unidade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "colaboradores_unidade_fkey"
+            columns: ["unidade"]
+            isOneToOne: false
+            referencedRelation: "lojas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lojas: {
+        Row: {
+          id: string
+          nome: string
+        }
+        Insert: {
+          id: string
+          nome: string
+        }
+        Update: {
+          id?: string
+          nome?: string
         }
         Relationships: []
       }
@@ -132,15 +189,25 @@ export type Database = {
           resposta_corrigida?: string | null
           status?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "planos_acao_checklist_id_fkey"
-            columns: ["checklist_id"]
-            isOneToOne: false
-            referencedRelation: "checklists"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      setores: {
+        Row: {
+          codigo: string
+          id: number
+          nome: string
+        }
+        Insert: {
+          codigo: string
+          id?: number
+          nome: string
+        }
+        Update: {
+          codigo?: string
+          id?: number
+          nome?: string
+        }
+        Relationships: []
       }
     }
     Views: {
