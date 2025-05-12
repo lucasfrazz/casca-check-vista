@@ -1,4 +1,3 @@
-
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { toast } from "@/components/ui/use-toast";
 import { Checklist, ActionPlan, User, ChecklistType, PeriodoType, DatabaseUser, DatabaseChecklist } from "@/types";
@@ -44,10 +43,10 @@ export const authService = {
         // Verificar senha - usando senha direta para simplificar
         if (password === adminData.senha) {
           const userData = mapDatabaseUserToAppUser({
-            id: adminData.id,
+            id: adminData.id || '',
             email: adminData.email,
             senha: adminData.senha
-          } as DatabaseUser, "admin");
+          }, "admin");
           
           console.log("Login de admin bem-sucedido:", userData);
           return userData;
@@ -69,15 +68,13 @@ export const authService = {
       }
       
       // Verificar senha - usando senha direta para simplificar
-      // Note: We need to query for senha separately since it's not in the colaboradores table
-      // This is a simplified approach - in a real app, you'd use proper authentication
       if (password === "password") { // Simplified password check
         const userData = mapDatabaseUserToAppUser({
           id: profileData.id,
           nome: profileData.nome,
           email: profileData.email,
           unidade: profileData.unidade
-        } as DatabaseUser, "collaborator");
+        }, "collaborator");
         
         console.log("Login de colaborador bem-sucedido:", userData);
         return userData;
@@ -228,15 +225,17 @@ export const checklistService = {
 
       console.log("Checklist criado com sucesso:", data);
       
-      // Convert the received data into our DatabaseChecklist type
+      // Ensure data has all necessary fields for DatabaseChecklist
       const dbChecklistData: DatabaseChecklist = {
         id: data.id,
         colaborador_id: data.colaborador_id,
         data: data.data,
-        vistoria1: data.vistoria1,
-        vistoria2: data.vistoria2,
-        vistoria3: data.vistoria3,
-        status_vistoria3: data.status_vistoria3,
+        vistoria1: data.vistoria1 || null,
+        vistoria2: data.vistoria2 || null,
+        vistoria3: data.vistoria3 || null,
+        status_vistoria1: data.status_vistoria1 || null,
+        status_vistoria2: data.status_vistoria2 || null,
+        status_vistoria3: data.status_vistoria3 || null,
         setor_id: data.setor_id,
         unidade: data.unidade,
         observacoes: data.observacoes
@@ -256,8 +255,10 @@ export const checklistService = {
       
       const { error } = await supabase
         .from('checklists')
-        .update({ status_vistoria3: "completed" })
-        .eq('id', checklistId);
+        .update({ 
+          status_vistoria3: "completed" 
+        })
+        .eq('id', parseInt(checklistId, 10));
 
       if (error) {
         console.error("Erro ao atualizar checklist:", error);
@@ -292,24 +293,25 @@ export const checklistService = {
       if (!dbChecklists || dbChecklists.length === 0) return [];
 
       // Convert DB checklists to app model
-      // For simplicity, we'll map each checklist to up to 3 app checklists (one per period)
       const appChecklists: Checklist[] = [];
       
-      for (const dbChecklist of dbChecklists) {
-        console.log("Processando checklist:", dbChecklist.id);
+      for (const checklist of dbChecklists) {
+        console.log("Processando checklist:", checklist.id);
         
-        // Create database checklist object with properties we know it has
+        // Ensure we have a complete DatabaseChecklist object
         const checklistData: DatabaseChecklist = {
-          id: dbChecklist.id,
-          colaborador_id: dbChecklist.colaborador_id,
-          data: dbChecklist.data,
-          vistoria1: dbChecklist.vistoria1,
-          vistoria2: dbChecklist.vistoria2,
-          vistoria3: dbChecklist.vistoria3,
-          status_vistoria3: dbChecklist.status_vistoria3,
-          setor_id: dbChecklist.setor_id,
-          unidade: dbChecklist.unidade,
-          observacoes: dbChecklist.observacoes
+          id: checklist.id,
+          colaborador_id: checklist.colaborador_id,
+          data: checklist.data,
+          vistoria1: checklist.vistoria1 || null,
+          vistoria2: checklist.vistoria2 || null,
+          vistoria3: checklist.vistoria3 || null,
+          status_vistoria1: checklist.status_vistoria1 || null,
+          status_vistoria2: checklist.status_vistoria2 || null,
+          status_vistoria3: checklist.status_vistoria3 || null,
+          setor_id: checklist.setor_id,
+          unidade: checklist.unidade,
+          observacoes: checklist.observacoes
         };
         
         // Create vistoria1 checklist if it exists
@@ -355,22 +357,23 @@ export const checklistService = {
       if (!dbChecklists || dbChecklists.length === 0) return [];
 
       // Convert DB checklists to app model
-      // For simplicity, we'll map each checklist to up to 3 app checklists (one per period)
       const appChecklists: Checklist[] = [];
       
-      for (const dbChecklist of dbChecklists) {
-        // Create database checklist object with properties we know it has
+      for (const checklist of dbChecklists) {
+        // Ensure we have a complete DatabaseChecklist object
         const checklistData: DatabaseChecklist = {
-          id: dbChecklist.id,
-          colaborador_id: dbChecklist.colaborador_id,
-          data: dbChecklist.data,
-          vistoria1: dbChecklist.vistoria1,
-          vistoria2: dbChecklist.vistoria2,
-          vistoria3: dbChecklist.vistoria3,
-          status_vistoria3: dbChecklist.status_vistoria3,
-          setor_id: dbChecklist.setor_id,
-          unidade: dbChecklist.unidade,
-          observacoes: dbChecklist.observacoes
+          id: checklist.id,
+          colaborador_id: checklist.colaborador_id,
+          data: checklist.data,
+          vistoria1: checklist.vistoria1 || null,
+          vistoria2: checklist.vistoria2 || null,
+          vistoria3: checklist.vistoria3 || null,
+          status_vistoria1: checklist.status_vistoria1 || null,
+          status_vistoria2: checklist.status_vistoria2 || null,
+          status_vistoria3: checklist.status_vistoria3 || null,
+          setor_id: checklist.setor_id,
+          unidade: checklist.unidade,
+          observacoes: checklist.observacoes
         };
         
         // Create vistoria1 checklist if it exists
@@ -536,11 +539,15 @@ export const actionPlanService = {
       if (!data) return [];
 
       // Get collaborator information for store names
-      // We need to collect all the colaborador_ids from the data
       const colaboradorIds: string[] = [];
+      
+      // Safely extract ids, handling possible errors in join
       data.forEach(plan => {
-        if (plan.checklists && plan.checklists.colaborador_id) {
-          colaboradorIds.push(plan.checklists.colaborador_id);
+        if (plan.checklists && typeof plan.checklists === 'object' && plan.checklists !== null) {
+          const checklist = plan.checklists as any;
+          if (checklist.colaborador_id) {
+            colaboradorIds.push(String(checklist.colaborador_id));
+          }
         }
       });
       
@@ -559,10 +566,21 @@ export const actionPlanService = {
       // Format the data
       return data.map(plan => {
         // Safely handle missing or invalid data
-        const checklistId = plan.checklist_id;
-        const checklist = plan.checklists || {};
-        const colaboradorId = checklist.colaborador_id;
-        const colaborador = colaboradores.find(c => c.id === colaboradorId);
+        let checklistId = plan.checklist_id;
+        let colaboradorId = "";
+        let unidade = "Unidade Desconhecida";
+        
+        // Safely extract checklist data
+        if (plan.checklists && typeof plan.checklists === 'object' && plan.checklists !== null) {
+          const checklist = plan.checklists as any;
+          if (checklist.colaborador_id) {
+            colaboradorId = String(checklist.colaborador_id);
+            const colaborador = colaboradores.find(c => String(c.id) === String(colaboradorId));
+            if (colaborador) {
+              unidade = colaborador.unidade || "Unidade Desconhecida";
+            }
+          }
+        }
         
         const createdAt = new Date(plan.data_envio);
         const now = new Date();
@@ -573,8 +591,8 @@ export const actionPlanService = {
           description: plan.descricao,
           createdAt: plan.data_envio,
           daysPending,
-          storeId: colaboradorId ? String(colaboradorId) : "",
-          storeName: colaborador?.unidade || "Unidade Desconhecida",
+          storeId: colaboradorId,
+          storeName: unidade,
           checklistType: "vistoria1" as ChecklistType, // Default assumption
           itemDescription: "Item do Checklist" // We don't have this info in our DB structure
         };

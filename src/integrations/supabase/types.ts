@@ -69,26 +69,56 @@ export type Database = {
         Row: {
           colaborador_id: string | null
           data: string
+          foto_vistoria1: string | null
+          foto_vistoria2: string | null
+          foto_vistoria3: string | null
           id: number
           observacoes: string | null
           setor_id: number | null
+          status_vistoria1: string | null
+          status_vistoria2: string | null
+          status_vistoria3: string | null
+          tipo: string | null
           unidade: string | null
+          vistoria1: Json | null
+          vistoria2: Json | null
+          vistoria3: Json | null
         }
         Insert: {
           colaborador_id?: string | null
           data: string
+          foto_vistoria1?: string | null
+          foto_vistoria2?: string | null
+          foto_vistoria3?: string | null
           id?: number
           observacoes?: string | null
           setor_id?: number | null
+          status_vistoria1?: string | null
+          status_vistoria2?: string | null
+          status_vistoria3?: string | null
+          tipo?: string | null
           unidade?: string | null
+          vistoria1?: Json | null
+          vistoria2?: Json | null
+          vistoria3?: Json | null
         }
         Update: {
           colaborador_id?: string | null
           data?: string
+          foto_vistoria1?: string | null
+          foto_vistoria2?: string | null
+          foto_vistoria3?: string | null
           id?: number
           observacoes?: string | null
           setor_id?: number | null
+          status_vistoria1?: string | null
+          status_vistoria2?: string | null
+          status_vistoria3?: string | null
+          tipo?: string | null
           unidade?: string | null
+          vistoria1?: Json | null
+          vistoria2?: Json | null
+          vistoria3?: Json | null
         }
         Relationships: [
           {

@@ -1,4 +1,3 @@
-
 export type UserRole = "admin" | "collaborator";
 export type UnidadeType = "Asa Norte" | "Asa Sul" | "Sudoeste" | "Águas Claras";
 export type PeriodoType = "manhã" | "tarde" | "noite";
@@ -51,7 +50,7 @@ export interface Checklist {
   period?: PeriodoType;
 }
 
-// Database checklist model
+// Database checklist model - updated to match what's coming from Supabase
 export interface DatabaseChecklist {
   id: number;
   colaborador_id: string | number; // Updated to accept both string and number
@@ -62,12 +61,13 @@ export interface DatabaseChecklist {
   vistoria1?: any;
   vistoria2?: any;
   vistoria3?: any;
+  status_vistoria1?: string;
+  status_vistoria2?: string;
   status_vistoria3?: string;
-  reincidencias_vistoria3?: number;
-  items?: ChecklistItem[];
   setor_id?: number;
   unidade?: string;
   observacoes?: string;
+  tipo?: string;
 }
 
 export interface ActionPlan {
