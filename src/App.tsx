@@ -21,8 +21,17 @@ import LessonsPage from "./pages/LessonsPage";
 import NotAuthorizedPage from "./pages/NotAuthorizedPage";
 import Index from "./pages/Index";
 
-// Create a new client
-const queryClient = new QueryClient();
+// Create a new client with retry configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 2,
+      staleTime: 30000,
+      retryDelay: attempt => Math.min(attempt > 1 ? 2000 : 1000, 30000),
+      refetchOnWindowFocus: false,
+    }
+  }
+});
 
 const App = () => {
   return (

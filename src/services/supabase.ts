@@ -258,7 +258,7 @@ export const checklistService = {
         .update({ 
           status_vistoria3: "completed" 
         })
-        .eq('id', parseInt(checklistId, 10));
+        .eq('id', parseInt(checklistId));
 
       if (error) {
         console.error("Erro ao atualizar checklist:", error);
@@ -278,10 +278,10 @@ export const checklistService = {
     try {
       console.log("Buscando checklists para a loja:", storeId);
       
-      // Get checklists for the colaborador
+      // Get checklists for the colaborador with limited fields to avoid resource errors
       const { data: dbChecklists, error } = await supabase
         .from('checklists')
-        .select('*')
+        .select('id, colaborador_id, data, vistoria1, vistoria2, vistoria3, status_vistoria1, status_vistoria2, status_vistoria3, setor_id, unidade, observacoes, tipo')
         .eq('colaborador_id', storeId);
 
       if (error) {
@@ -311,7 +311,8 @@ export const checklistService = {
           status_vistoria3: checklist.status_vistoria3 || null,
           setor_id: checklist.setor_id,
           unidade: checklist.unidade,
-          observacoes: checklist.observacoes
+          observacoes: checklist.observacoes,
+          tipo: checklist.tipo
         };
         
         // Create vistoria1 checklist if it exists
@@ -347,11 +348,12 @@ export const checklistService = {
   // Get checklists by date
   getChecklistsByDate: async (date: string) => {
     try {
-      // Get checklists for the date
+      // Get checklists for the date with limited fields to avoid resource errors
       const { data: dbChecklists, error } = await supabase
         .from('checklists')
-        .select('*')
-        .eq('data', date);
+        .select('id, colaborador_id, data, vistoria1, vistoria2, vistoria3, status_vistoria1, status_vistoria2, status_vistoria3, setor_id, unidade, observacoes, tipo')
+        .eq('data', date)
+        .limit(20); // Limit the results to avoid resource errors
 
       if (error) throw error;
       if (!dbChecklists || dbChecklists.length === 0) return [];
@@ -373,7 +375,8 @@ export const checklistService = {
           status_vistoria3: checklist.status_vistoria3 || null,
           setor_id: checklist.setor_id,
           unidade: checklist.unidade,
-          observacoes: checklist.observacoes
+          observacoes: checklist.observacoes,
+          tipo: checklist.tipo
         };
         
         // Create vistoria1 checklist if it exists
@@ -522,32 +525,38 @@ export const actionPlanService = {
   // Get pending action plans
   getPendingActionPlans: async () => {
     try {
-      // Get pending action plans
+      // Get pending action plans without using the join that's causing errors
       const { data, error } = await supabase
         .from('planos_acao')
-        .select(`
-          *,
-          checklists(
-            id,
-            colaborador_id,
-            data
-          )
-        `)
+        .select('*')
         .eq('status', 'pending');
 
       if (error) throw error;
       if (!data) return [];
 
-      // Get collaborator information for store names
+      // Separately fetch the checklist IDs we need
+      const checklistIds = data.map(plan => plan.checklist_id);
+      
+      // If we have checklist IDs to query
+      let checklists: any[] = [];
+      if (checklistIds.length > 0) {
+        const { data: checklistData, error: checklistError } = await supabase
+          .from('checklists')
+          .select('id, colaborador_id, data')
+          .in('id', checklistIds);
+
+        if (!checklistError && checklistData) {
+          checklists = checklistData;
+        }
+      }
+
+      // Fetch collaborator information for store names
       const colaboradorIds: string[] = [];
       
-      // Safely extract ids, handling possible errors in join
-      data.forEach(plan => {
-        if (plan.checklists && typeof plan.checklists === 'object' && plan.checklists !== null) {
-          const checklist = plan.checklists as any;
-          if (checklist.colaborador_id) {
-            colaboradorIds.push(String(checklist.colaborador_id));
-          }
+      // Extract IDs from the checklists we received
+      checklists.forEach(checklist => {
+        if (checklist && checklist.colaborador_id) {
+          colaboradorIds.push(String(checklist.colaborador_id));
         }
       });
       
@@ -563,22 +572,18 @@ export const actionPlanService = {
         if (colabData) colaboradores = colabData;
       }
 
-      // Format the data
+      // Format the data by manually joining what we need
       return data.map(plan => {
-        // Safely handle missing or invalid data
-        let checklistId = plan.checklist_id;
+        // Find the matching checklist and collaborator
+        const checklist = checklists.find(c => c.id === plan.checklist_id);
         let colaboradorId = "";
         let unidade = "Unidade Desconhecida";
         
-        // Safely extract checklist data
-        if (plan.checklists && typeof plan.checklists === 'object' && plan.checklists !== null) {
-          const checklist = plan.checklists as any;
-          if (checklist.colaborador_id) {
-            colaboradorId = String(checklist.colaborador_id);
-            const colaborador = colaboradores.find(c => String(c.id) === String(colaboradorId));
-            if (colaborador) {
-              unidade = colaborador.unidade || "Unidade Desconhecida";
-            }
+        if (checklist && checklist.colaborador_id) {
+          colaboradorId = String(checklist.colaborador_id);
+          const colaborador = colaboradores.find(c => String(c.id) === String(colaboradorId));
+          if (colaborador) {
+            unidade = colaborador.unidade || "Unidade Desconhecida";
           }
         }
         

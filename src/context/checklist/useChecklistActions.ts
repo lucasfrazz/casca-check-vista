@@ -122,8 +122,23 @@ export function useChecklistActions({
   const getChecklistsByStore = async (storeId: string): Promise<Checklist[]> => {
     setLoading(true);
     try {
-      // Fetch from Supabase
-      const storeChecklists = await checklistService.getChecklistsByStore(storeId);
+      // Fetch from Supabase with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      let storeChecklists: Checklist[] = [];
+      
+      while (attempts < maxAttempts) {
+        try {
+          storeChecklists = await checklistService.getChecklistsByStore(storeId);
+          break; // Success, exit the loop
+        } catch (err) {
+          console.warn(`Attempt ${attempts + 1} failed, retrying...`, err);
+          attempts++;
+          if (attempts >= maxAttempts) throw err;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
+        }
+      }
       
       // Update local state with the fetched checklists
       const updatedChecklists = [...checklists];
@@ -156,8 +171,23 @@ export function useChecklistActions({
   const getChecklistsByDate = async (date: string): Promise<Checklist[]> => {
     setLoading(true);
     try {
-      // Fetch from Supabase
-      const dateChecklists = await checklistService.getChecklistsByDate(date);
+      // Fetch from Supabase with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      let dateChecklists: Checklist[] = [];
+      
+      while (attempts < maxAttempts) {
+        try {
+          dateChecklists = await checklistService.getChecklistsByDate(date);
+          break; // Success, exit the loop
+        } catch (err) {
+          console.warn(`Attempt ${attempts + 1} failed, retrying...`, err);
+          attempts++;
+          if (attempts >= maxAttempts) throw err;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
+        }
+      }
       
       // Update local state with the fetched checklists
       const updatedChecklists = [...checklists];
@@ -359,8 +389,23 @@ export function useChecklistActions({
   const getPendingActionPlans = async (): Promise<PendingActionPlan[]> => {
     setLoading(true);
     try {
-      // Fetch from Supabase
-      const plans = await actionPlanService.getPendingActionPlans();
+      // Fetch from Supabase with retry logic
+      let attempts = 0;
+      const maxAttempts = 3;
+      let plans: PendingActionPlan[] = [];
+      
+      while (attempts < maxAttempts) {
+        try {
+          plans = await actionPlanService.getPendingActionPlans();
+          break; // Success, exit the loop
+        } catch (err) {
+          console.warn(`Attempt ${attempts + 1} failed, retrying...`, err);
+          attempts++;
+          if (attempts >= maxAttempts) throw err;
+          // Exponential backoff
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
+        }
+      }
       
       // Update local state
       setPendingPlans(plans);
