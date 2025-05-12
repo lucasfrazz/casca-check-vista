@@ -12,6 +12,8 @@ import { ChecklistType } from "@/types";
 import { PendingNotification } from "@/components/PendingNotification";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { RefreshCcw } from "lucide-react";
 
 const DashboardPage = () => {
   const { user, isLoading: authLoading } = useAuth();
@@ -21,6 +23,7 @@ const DashboardPage = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Definir um timeout para evitar loading infinito
   useEffect(() => {
@@ -63,6 +66,8 @@ const DashboardPage = () => {
   const handleStoreSelect = (storeId: string) => {
     console.log(`Store selecionada: ${storeId}`);
     setSelectedStore(storeId);
+    // Reset error state when store is selected
+    setLoadError(null);
   };
 
   const handleChecklistSelect = async (type: ChecklistType) => {
@@ -70,6 +75,7 @@ const DashboardPage = () => {
     
     try {
       setIsCreating(true);
+      setLoadError(null);
       console.log(`Criando checklist ${type} para loja ${selectedStore}`);
       const newChecklist = await createChecklist(type, selectedStore);
       if (newChecklist) {
@@ -78,6 +84,7 @@ const DashboardPage = () => {
       }
     } catch (error) {
       console.error("Erro ao criar checklist:", error);
+      setLoadError("Não foi possível criar o checklist. Tente novamente.");
       toast({
         title: "Erro",
         description: "Não foi possível criar o checklist. Tente novamente.",
@@ -86,6 +93,17 @@ const DashboardPage = () => {
     } finally {
       setIsCreating(false);
     }
+  };
+
+  // Handle retry after error
+  const handleRetry = () => {
+    setLoadError(null);
+    setIsInitialized(false);
+    
+    // Force re-initialization after a short delay
+    setTimeout(() => {
+      setIsInitialized(true);
+    }, 500);
   };
 
   // Enquanto o auth está carregando, mostra um spinner com timeout
@@ -112,6 +130,19 @@ const DashboardPage = () => {
       
       <main className="container mx-auto py-6 px-4">
         <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+        
+        {loadError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-md mb-6 flex flex-col items-center">
+            <p className="mb-3">{loadError}</p>
+            <Button 
+              onClick={handleRetry} 
+              variant="outline" 
+              className="flex items-center gap-2"
+            >
+              <RefreshCcw className="h-4 w-4" /> Tentar novamente
+            </Button>
+          </div>
+        )}
         
         {(checklistLoading || isCreating) ? (
           <div className="flex justify-center items-center" style={{height: "50vh"}}>

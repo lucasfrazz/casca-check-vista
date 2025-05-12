@@ -27,6 +27,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [pendingPlans, setPendingPlans] = useState<PendingActionPlan[]>([]);
   const [loading, setLoading] = useState(false);
+  const [initialLoadAttempted, setInitialLoadAttempted] = useState(false);
   const { user } = useAuth();
 
   // Get all actions from our custom hook
@@ -42,7 +43,8 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
   // Load checklists on mount
   useEffect(() => {
     const fetchInitialData = async () => {
-      if (user) {
+      if (user && !initialLoadAttempted) {
+        setInitialLoadAttempted(true);
         setLoading(true);
         try {
           // Get checklists from Supabase
@@ -51,14 +53,12 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
           if (user.role === "admin") {
             // Admin can see all checklists
             if (user.storeIds && user.storeIds.length > 0) {
-              const storeChecklists = await Promise.all(
-                user.storeIds.map(storeId => 
-                  checklistService.getChecklistsByStore(storeId)
-                )
-              );
-              fetchedChecklists = storeChecklists.flat();
+              // Only load first store to avoid performance issues
+              const firstStore = user.storeIds[0];
+              const storeChecklists = await checklistService.getChecklistsByStore(firstStore);
+              fetchedChecklists = storeChecklists;
             } else {
-              // If no specific stores, get all checklists
+              // If no specific stores, get only today's checklists
               const today = new Date().toISOString().split('T')[0];
               fetchedChecklists = await checklistService.getChecklistsByDate(today);
             }
@@ -70,15 +70,24 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
           setChecklists(fetchedChecklists);
           
           // Get pending action plans
-          const plans = await actions.getPendingActionPlans();
-          setPendingPlans(plans);
+          try {
+            const plans = await actions.getPendingActionPlans();
+            setPendingPlans(plans);
+          } catch (planError) {
+            console.error("Error fetching pending plans:", planError);
+            // Don't throw - continue with empty plans
+          }
+          
         } catch (error) {
           console.error("Error fetching initial data:", error);
-          toast({
-            title: "Erro",
-            description: "Falha ao carregar dados iniciais",
-            variant: "destructive",
-          });
+          // Only show toast for non-network errors
+          if (!(error instanceof TypeError && (error.message.includes('fetch') || error.message.includes('network')))) {
+            toast({
+              title: "Erro",
+              description: "Falha ao carregar dados iniciais",
+              variant: "destructive",
+            });
+          }
         } finally {
           setLoading(false);
         }
@@ -86,7 +95,7 @@ export function ChecklistProvider({ children }: { children: ReactNode }) {
     };
 
     fetchInitialData();
-  }, [user, actions.getPendingActionPlans]);
+  }, [user, actions.getPendingActionPlans, initialLoadAttempted]);
 
   return (
     <ChecklistContext.Provider
