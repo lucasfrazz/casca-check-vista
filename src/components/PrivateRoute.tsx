@@ -1,6 +1,6 @@
 
-import { ReactNode, useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { ReactNode, useEffect, useState, useRef } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { Spinner } from '@/components/ui/spinner';
@@ -12,29 +12,41 @@ interface PrivateRouteProps {
 
 export function PrivateRoute({ children, roles }: PrivateRouteProps) {
   const { isAuthenticated, user, isLoading } = useAuth();
-  const navigate = useNavigate();
   const [waitTime, setWaitTime] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Timer para evitar loading infinito
+  // Timer para evitar loading infinito - com useRef para garantir uma única instância
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    // Limpe qualquer intervalo existente antes de criar um novo
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
     
     if (isLoading) {
-      interval = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setWaitTime(prev => {
-          // Se esperar mais de 5 segundos, consideramos um problema e redirecionamos para login
+          // Se esperar mais de 5 segundos, consideramos um problema
           if (prev >= 5) {
-            console.warn("Tempo limite de carregamento atingido. Redirecionando para login.");
-            clearInterval(interval);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+              intervalRef.current = null;
+            }
             return prev;
           }
           return prev + 1;
         });
       }, 1000);
+    } else {
+      // Reset wait time when loading ends
+      setWaitTime(0);
     }
     
     return () => {
-      if (interval) clearInterval(interval);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [isLoading]);
   

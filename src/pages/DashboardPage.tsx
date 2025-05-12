@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { StoreSelector } from "@/components/StoreSelector";
 import { ChecklistCard } from "@/components/ChecklistCard";
@@ -25,26 +24,32 @@ const DashboardPage = () => {
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Definir um timeout para evitar loading infinito
-  useEffect(() => {
+  // Definir um timeout para evitar loading infinito com useCallback para estabilizar
+  const setupLoadingTimeout = useCallback(() => {
     if ((authLoading || !isInitialized) && !loadTimeout) {
       const timeout = setTimeout(() => {
         console.log("Loading timeout reached, forcing initialization");
         setIsInitialized(true);
       }, 5000);
       setLoadTimeout(timeout);
+      return timeout;
     }
-
-    return () => {
-      if (loadTimeout) {
-        clearTimeout(loadTimeout);
-      }
-    };
+    return null;
   }, [authLoading, isInitialized, loadTimeout]);
 
-  // Para colaboradores, pré-seleciona a loja deles
   useEffect(() => {
-    if (!authLoading && user) {
+    const timeout = setupLoadingTimeout();
+    
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [setupLoadingTimeout]);
+
+  // Para colaboradores, pré-seleciona a loja deles - com useEffect estabilizado
+  useEffect(() => {
+    if (!authLoading && user && !isInitialized) {
       console.log("User carregado no dashboard:", user);
       if (user.role === "collaborator" && user.storeId) {
         console.log(`Pré-selecionando a loja do colaborador: ${user.storeId}`);
@@ -54,9 +59,10 @@ const DashboardPage = () => {
       
       if (loadTimeout) {
         clearTimeout(loadTimeout);
+        setLoadTimeout(null);
       }
     }
-  }, [user, authLoading, loadTimeout]);
+  }, [user, authLoading, loadTimeout, isInitialized]);
 
   // Obter lojas disponíveis com base no papel do usuário
   const availableStores = user?.role === "admin" 

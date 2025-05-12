@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useChecklists } from "@/context/checklist";
 import { PendingActionAlert } from "./PendingActionAlert";
 import { PendingActionPlan } from "@/types";
@@ -16,67 +16,77 @@ export function PendingNotification() {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
 
-  useEffect(() => {
-    // Check for pending plans on component mount
-    const fetchPlans = async () => {
-      if (!user || isLoading) return;
+  // Use memoized callback to prevent re-creation on each render
+  const fetchPlans = useCallback(async () => {
+    if (!user || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const plans = await getPendingActionPlans();
       
-      setIsLoading(true);
-      try {
-        const plans = await getPendingActionPlans();
+      // Filter plans by the user's unit if they are a collaborator
+      const filteredPlans = user.role === "collaborator" && user.unidade 
+        ? plans.filter(plan => plan.storeName === user.unidade)
+        : plans;
+      
+      if (filteredPlans && filteredPlans.length > 0) {
+        setPendingPlans(filteredPlans);
         
-        // Filter plans by the user's unit if they are a collaborator
-        const filteredPlans = user.role === "collaborator" && user.unidade 
-          ? plans.filter(plan => plan.storeName === user.unidade)
-          : plans;
+        // Find the maximum days pending
+        const max = Math.max(...filteredPlans.map(plan => plan.daysPending));
+        setMaxDays(max);
         
-        if (filteredPlans && filteredPlans.length > 0) {
-          setPendingPlans(filteredPlans);
-          
-          // Find the maximum days pending
-          const max = Math.max(...filteredPlans.map(plan => plan.daysPending));
-          setMaxDays(max);
-          
-          // Show notification
-          setShowNotification(true);
-        }
-      } catch (error) {
-        console.error("Error fetching pending action plans:", error);
-        
-        // Don't show toast for network errors as they're expected during initial load
-        // or resource errors which need retry logic
-        const isNetworkError = error instanceof TypeError && 
-          (error.message.includes('fetch') || error.message.includes('network'));
-        
-        const isResourceError = error instanceof Error && 
-          error.message.includes('ERR_INSUFFICIENT_RESOURCES');
-        
-        if (isNetworkError || isResourceError) {
-          if (retryCount < maxRetries) {
-            // Implement exponential backoff for retries
-            const delay = Math.pow(2, retryCount) * 1000;
-            console.log(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms`);
-            setTimeout(() => {
-              setRetryCount(prev => prev + 1);
-              setIsLoading(false); // Allow retry on next render
-            }, delay);
-          }
-          return;
-        }
-        
-        // For other errors, show toast
-        toast({
-          title: "Erro",
-          description: "Não foi possível verificar pendências",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+        // Show notification
+        setShowNotification(true);
       }
-    };
-
-    fetchPlans();
+    } catch (error) {
+      console.error("Error fetching pending action plans:", error);
+      
+      // Don't show toast for network errors as they're expected during initial load
+      // or resource errors which need retry logic
+      const isNetworkError = error instanceof TypeError && 
+        (error.message.includes('fetch') || error.message.includes('network'));
+      
+      const isResourceError = error instanceof Error && 
+        error.message.includes('ERR_INSUFFICIENT_RESOURCES');
+      
+      if (isNetworkError || isResourceError) {
+        if (retryCount < maxRetries) {
+          // Implement exponential backoff for retries
+          const delay = Math.pow(2, retryCount) * 1000;
+          console.log(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms`);
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+            setIsLoading(false); // Allow retry on next render
+          }, delay);
+        }
+        return;
+      }
+      
+      // For other errors, show toast
+      toast({
+        title: "Erro",
+        description: "Não foi possível verificar pendências",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [getPendingActionPlans, user, isLoading, retryCount]);
+
+  useEffect(() => {
+    // Check for pending plans on component mount only
+    let isMounted = true;
+    
+    // Only run the fetch once when the component mounts and when the retry count changes
+    if (isMounted && !isLoading) {
+      fetchPlans();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchPlans, retryCount, isLoading]);
 
   const handleCloseAlert = () => {
     setShowNotification(false);
