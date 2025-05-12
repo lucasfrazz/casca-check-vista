@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,6 +12,7 @@ import { PrivateRoute } from "./components/PrivateRoute";
 
 // Pages
 import LoginPage from "./pages/LoginPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import ChecklistPage from "./pages/ChecklistPage";
 import ActionPlansPage from "./pages/ActionPlansPage";
@@ -35,6 +37,7 @@ const App = () => {
                 <Routes>
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<LoginPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
                   
                   {/* Protected routes for all authenticated users */}
                   <Route path="/dashboard" element={
