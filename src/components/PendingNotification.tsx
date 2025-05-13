@@ -1,10 +1,11 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useChecklists } from "@/context/checklist";
 import { PendingActionAlert } from "./PendingActionAlert";
 import { PendingActionPlan } from "@/types";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 export function PendingNotification() {
   const { getPendingActionPlans } = useChecklists();
@@ -14,16 +15,13 @@ export function PendingNotification() {
   const [maxDays, setMaxDays] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [errorOccurred, setErrorOccurred] = useState(false);
   const maxRetries = 3;
   const hasAttemptedFetch = useRef(false);
   const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Use memoized callback to prevent re-creation on each render
+  // Fully memoized fetch function that won't change on rerenders
   const fetchPlans = useCallback(async () => {
-    // Only attempt to fetch if:
-    // 1. User exists
-    // 2. Not already loading 
-    // 3. Haven't already attempted a fetch
     if (!user || isLoading || hasAttemptedFetch.current) return;
     
     hasAttemptedFetch.current = true;
@@ -52,6 +50,7 @@ export function PendingNotification() {
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching pending action plans:", error);
+      setErrorOccurred(true);
       
       // Check for resource errors or network errors
       const isNetworkError = error instanceof TypeError && 
@@ -96,11 +95,8 @@ export function PendingNotification() {
     }
   }, [getPendingActionPlans, user, isLoading, retryCount]);
 
+  // Cleanup function for unmounting
   useEffect(() => {
-    // Disable the automatic check for pending plans
-    // This will prevent the infinite loop by default
-    // We'll only check if explicitly instructed via button click later
-    
     return () => {
       // Clean up any pending timeouts on unmount
       if (fetchTimeoutRef.current) {
@@ -109,11 +105,12 @@ export function PendingNotification() {
     };
   }, []);
 
-  // Add a manual check function that can be triggered by user action
+  // Manual check function that will be triggered by button click
   const handleManualCheck = () => {
     // Reset state for a fresh check
     hasAttemptedFetch.current = false;
     setRetryCount(0);
+    setErrorOccurred(false);
     
     // Trigger the fetch
     fetchPlans();
@@ -123,12 +120,27 @@ export function PendingNotification() {
     setShowNotification(false);
   };
 
-  if (!showNotification) return null;
-
-  return (
-    <PendingActionAlert 
-      daysCount={maxDays} 
-      onClose={handleCloseAlert} 
-    />
-  );
+  // If we have a notification to show, display it
+  if (showNotification) {
+    return (
+      <PendingActionAlert 
+        daysCount={maxDays} 
+        onClose={handleCloseAlert} 
+      />
+    );
+  }
+  
+  // Otherwise, render a small button to manually check for notifications
+  return errorOccurred ? (
+    <div className="fixed bottom-4 right-4 z-50">
+      <Button 
+        onClick={handleManualCheck}
+        className="bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-2 shadow-md"
+        disabled={isLoading}
+      >
+        <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+        {isLoading ? "Verificando..." : "Verificar pendências"}
+      </Button>
+    </div>
+  ) : null;
 }

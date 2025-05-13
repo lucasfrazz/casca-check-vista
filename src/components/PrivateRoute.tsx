@@ -16,6 +16,7 @@ export function PrivateRoute({ children, roles }: PrivateRouteProps) {
   const [waitTime, setWaitTime] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [forceAuthentication, setForceAuthentication] = useState(false);
+  const [timeoutReached, setTimeoutReached] = useState(false);
   
   // Timer to avoid infinite loading - using useRef for a single instance
   useEffect(() => {
@@ -25,6 +26,7 @@ export function PrivateRoute({ children, roles }: PrivateRouteProps) {
       intervalRef.current = null;
     }
     
+    // Only start timer if loading and not already forced auth
     if (isLoading && !forceAuthentication) {
       intervalRef.current = setInterval(() => {
         setWaitTime(prev => {
@@ -34,6 +36,7 @@ export function PrivateRoute({ children, roles }: PrivateRouteProps) {
               clearInterval(intervalRef.current);
               intervalRef.current = null;
             }
+            setTimeoutReached(true);
             return prev;
           }
           return prev + 1;
@@ -53,7 +56,7 @@ export function PrivateRoute({ children, roles }: PrivateRouteProps) {
   }, [isLoading, forceAuthentication]);
   
   // If loading time exceeds 5 seconds without resolving, offer option to continue or redirect
-  if ((waitTime >= 5 && isLoading) || forceAuthentication) {
+  if ((timeoutReached || waitTime >= 5) && isLoading) {
     console.log("Time limit reached, offering options to user");
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
