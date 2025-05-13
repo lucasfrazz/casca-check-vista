@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useChecklists } from "@/context/checklist";
 import { PendingActionAlert } from "./PendingActionAlert";
 import { PendingActionPlan } from "@/types";
@@ -15,11 +15,13 @@ export function PendingNotification() {
   const [isLoading, setIsLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+  const hasAttemptedFetch = useRef(false);
 
   // Use memoized callback to prevent re-creation on each render
   const fetchPlans = useCallback(async () => {
-    if (!user || isLoading) return;
+    if (!user || isLoading || hasAttemptedFetch.current) return;
     
+    hasAttemptedFetch.current = true;
     setIsLoading(true);
     try {
       const plans = await getPendingActionPlans();
@@ -57,6 +59,7 @@ export function PendingNotification() {
           console.log(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms`);
           setTimeout(() => {
             setRetryCount(prev => prev + 1);
+            hasAttemptedFetch.current = false; // Reset the flag to allow another attempt
             setIsLoading(false); // Allow retry on next render
           }, delay);
         }
@@ -76,17 +79,14 @@ export function PendingNotification() {
 
   useEffect(() => {
     // Check for pending plans on component mount only
-    let isMounted = true;
-    
-    // Only run the fetch once when the component mounts and when the retry count changes
-    if (isMounted && !isLoading) {
+    if (user && !isLoading && !hasAttemptedFetch.current) {
       fetchPlans();
     }
     
     return () => {
-      isMounted = false;
+      // Cleanup if needed
     };
-  }, [fetchPlans, retryCount, isLoading]);
+  }, [fetchPlans, user, isLoading]);
 
   const handleCloseAlert = () => {
     setShowNotification(false);
