@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { UserRole } from '@/types';
 import { Spinner } from '@/components/ui/spinner';
+import { Button } from '@/components/ui/button';
 
 interface PrivateRouteProps {
   children: ReactNode;
@@ -14,19 +15,20 @@ export function PrivateRoute({ children, roles }: PrivateRouteProps) {
   const { isAuthenticated, user, isLoading } = useAuth();
   const [waitTime, setWaitTime] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [forceAuthentication, setForceAuthentication] = useState(false);
   
-  // Timer para evitar loading infinito - com useRef para garantir uma única instância
+  // Timer to avoid infinite loading - using useRef for a single instance
   useEffect(() => {
-    // Limpe qualquer intervalo existente antes de criar um novo
+    // Clear any existing interval before creating a new one
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
     
-    if (isLoading) {
+    if (isLoading && !forceAuthentication) {
       intervalRef.current = setInterval(() => {
         setWaitTime(prev => {
-          // Se esperar mais de 5 segundos, consideramos um problema
+          // If waiting for more than 5 seconds, consider it a problem
           if (prev >= 5) {
             if (intervalRef.current) {
               clearInterval(intervalRef.current);
@@ -48,39 +50,57 @@ export function PrivateRoute({ children, roles }: PrivateRouteProps) {
         intervalRef.current = null;
       }
     };
-  }, [isLoading]);
+  }, [isLoading, forceAuthentication]);
   
-  // Caso o tempo de carregamento ultrapasse 5 segundos sem resolver, redireciona para login
-  if (waitTime >= 5 && isLoading) {
-    console.log("Tempo limite atingido, redirecionando para login");
-    return <Navigate to="/login" replace />;
+  // If loading time exceeds 5 seconds without resolving, offer option to continue or redirect
+  if ((waitTime >= 5 && isLoading) || forceAuthentication) {
+    console.log("Time limit reached, offering options to user");
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+          <h2 className="text-xl font-semibold mb-4">Verificação de autenticação demorada</h2>
+          <p className="mb-6">Estamos tendo dificuldades em verificar seu login. O que deseja fazer?</p>
+          
+          <div className="flex flex-col gap-3">
+            <Button onClick={() => setForceAuthentication(true)} className="w-full">
+              Continuar mesmo assim
+            </Button>
+            
+            <Button onClick={() => window.location.href = "/login"} variant="outline" className="w-full">
+              Voltar para o login
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
   
-  // Se ainda está carregando, mostra um spinner
+  // If still loading, show a spinner
   if (isLoading && waitTime < 5) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
           <p className="text-gray-500">Verificando autenticação...</p>
+          <p className="text-sm text-gray-400">Aguarde {5 - waitTime} segundos...</p>
         </div>
       </div>
     );
   }
 
-  // Se não está autenticado, redireciona para a página de login
-  if (!isAuthenticated) {
-    console.log("Usuário não autenticado, redirecionando para login");
+  // If not authenticated, redirect to login page
+  if (!isAuthenticated && !forceAuthentication) {
+    console.log("User not authenticated, redirecting to login");
     return <Navigate to="/login" replace />;
   }
 
-  // Verifica se o usuário tem a role necessária
-  if (roles && user && !roles.includes(user.role)) {
-    console.log(`Usuário não tem permissão. Role necessária: ${roles.join(', ')}, Role do usuário: ${user.role}`);
+  // Check if user has the required role
+  if (roles && user && !roles.includes(user.role) && !forceAuthentication) {
+    console.log(`User does not have permission. Required role: ${roles.join(', ')}, User role: ${user.role}`);
     return <Navigate to="/not-authorized" replace />;
   }
 
-  // Se tudo estiver ok, renderiza o conteúdo protegido
-  console.log("Autenticação bem-sucedida. Renderizando rota privada.");
+  // If everything is ok, render the protected content
+  console.log("Authentication successful. Rendering private route.");
   return <>{children}</>;
 }

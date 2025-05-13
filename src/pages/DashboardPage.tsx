@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/Header";
 import { StoreSelector } from "@/components/StoreSelector";
@@ -23,20 +24,24 @@ const DashboardPage = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [loadTimeout, setLoadTimeout] = useState<NodeJS.Timeout | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [initializationCompleted, setInitializationCompleted] = useState(false);
 
-  // Definir um timeout para evitar loading infinito com useCallback para estabilizar
+  // Setup loading timeout with useCallback
   const setupLoadingTimeout = useCallback(() => {
-    if ((authLoading || !isInitialized) && !loadTimeout) {
+    if ((authLoading || !isInitialized) && !loadTimeout && !initializationCompleted) {
+      console.log("Setting up loading timeout");
       const timeout = setTimeout(() => {
         console.log("Loading timeout reached, forcing initialization");
         setIsInitialized(true);
+        setInitializationCompleted(true);
       }, 5000);
       setLoadTimeout(timeout);
       return timeout;
     }
     return null;
-  }, [authLoading, isInitialized, loadTimeout]);
+  }, [authLoading, isInitialized, loadTimeout, initializationCompleted]);
 
+  // Clear timeout on unmount
   useEffect(() => {
     const timeout = setupLoadingTimeout();
     
@@ -47,30 +52,33 @@ const DashboardPage = () => {
     };
   }, [setupLoadingTimeout]);
 
-  // Para colaboradores, pré-seleciona a loja deles - com useEffect estabilizado
+  // Pre-select store for collaborators - only run once
   useEffect(() => {
-    if (!authLoading && user && !isInitialized) {
-      console.log("User carregado no dashboard:", user);
+    if (!authLoading && user && !isInitialized && !initializationCompleted) {
+      console.log("User loaded in dashboard:", user);
+      
       if (user.role === "collaborator" && user.storeId) {
-        console.log(`Pré-selecionando a loja do colaborador: ${user.storeId}`);
+        console.log(`Pre-selecting collaborator's store: ${user.storeId}`);
         setSelectedStore(user.storeId);
       }
+      
       setIsInitialized(true);
+      setInitializationCompleted(true);
       
       if (loadTimeout) {
         clearTimeout(loadTimeout);
         setLoadTimeout(null);
       }
     }
-  }, [user, authLoading, loadTimeout, isInitialized]);
+  }, [user, authLoading, loadTimeout, isInitialized, initializationCompleted]);
 
-  // Obter lojas disponíveis com base no papel do usuário
+  // Get available stores based on user role
   const availableStores = user?.role === "admin" 
     ? stores 
     : stores.filter(store => store.id === user?.storeId);
 
   const handleStoreSelect = (storeId: string) => {
-    console.log(`Store selecionada: ${storeId}`);
+    console.log(`Store selected: ${storeId}`);
     setSelectedStore(storeId);
     // Reset error state when store is selected
     setLoadError(null);
@@ -82,14 +90,14 @@ const DashboardPage = () => {
     try {
       setIsCreating(true);
       setLoadError(null);
-      console.log(`Criando checklist ${type} para loja ${selectedStore}`);
+      console.log(`Creating ${type} checklist for store ${selectedStore}`);
       const newChecklist = await createChecklist(type, selectedStore);
       if (newChecklist) {
-        console.log(`Checklist criado com sucesso: ${newChecklist.id}`);
+        console.log(`Checklist created successfully: ${newChecklist.id}`);
         navigate(`/checklist/${newChecklist.id}`);
       }
     } catch (error) {
-      console.error("Erro ao criar checklist:", error);
+      console.error("Error creating checklist:", error);
       setLoadError("Não foi possível criar o checklist. Tente novamente.");
       toast({
         title: "Erro",
@@ -105,15 +113,17 @@ const DashboardPage = () => {
   const handleRetry = () => {
     setLoadError(null);
     setIsInitialized(false);
+    setInitializationCompleted(false);
     
     // Force re-initialization after a short delay
     setTimeout(() => {
       setIsInitialized(true);
+      setInitializationCompleted(true);
     }, 500);
   };
 
-  // Enquanto o auth está carregando, mostra um spinner com timeout
-  if ((authLoading || !isInitialized) && !user) {
+  // Show loading spinner while auth is loading, with timeout
+  if ((authLoading || !isInitialized) && !initializationCompleted) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
@@ -122,6 +132,16 @@ const DashboardPage = () => {
             <div className="flex flex-col items-center gap-4">
               <Spinner size="lg" />
               <p className="text-gray-500">Carregando informações...</p>
+              <Button 
+                onClick={() => {
+                  setIsInitialized(true);
+                  setInitializationCompleted(true);
+                }}
+                variant="outline"
+                className="mt-4"
+              >
+                Continuar sem aguardar
+              </Button>
             </div>
           </div>
         </main>

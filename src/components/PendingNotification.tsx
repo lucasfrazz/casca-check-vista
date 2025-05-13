@@ -20,11 +20,17 @@ export function PendingNotification() {
 
   // Use memoized callback to prevent re-creation on each render
   const fetchPlans = useCallback(async () => {
+    // Only attempt to fetch if:
+    // 1. User exists
+    // 2. Not already loading 
+    // 3. Haven't already attempted a fetch
     if (!user || isLoading || hasAttemptedFetch.current) return;
     
     hasAttemptedFetch.current = true;
     setIsLoading(true);
+    
     try {
+      console.log("Attempting to fetch pending action plans...");
       const plans = await getPendingActionPlans();
       
       // Filter plans by the user's unit if they are a collaborator
@@ -42,10 +48,12 @@ export function PendingNotification() {
         // Show notification
         setShowNotification(true);
       }
+      
+      setIsLoading(false);
     } catch (error) {
       console.error("Error fetching pending action plans:", error);
       
-      // Check for resource errors specifically
+      // Check for resource errors or network errors
       const isNetworkError = error instanceof TypeError && 
         (error.message.includes('fetch') || error.message.includes('network'));
       
@@ -53,46 +61,45 @@ export function PendingNotification() {
         (error.message.includes('ERR_INSUFFICIENT_RESOURCES') || 
          (error.toString && error.toString().includes('ERR_INSUFFICIENT_RESOURCES')));
       
-      if (isNetworkError || isResourceError) {
-        if (retryCount < maxRetries) {
-          // Implement exponential backoff for retries
-          const delay = Math.pow(2, retryCount) * 1000;
-          console.log(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms`);
-          
-          // Clear any existing timeout
-          if (fetchTimeoutRef.current) {
-            clearTimeout(fetchTimeoutRef.current);
-          }
-          
-          fetchTimeoutRef.current = setTimeout(() => {
-            setRetryCount(prev => prev + 1);
-            hasAttemptedFetch.current = false; // Reset the flag to allow another attempt
-            setIsLoading(false); // Allow retry on next render
-            fetchTimeoutRef.current = null;
-          }, delay);
-        } else {
-          // After max retries, just stop trying to prevent reload loops
-          console.warn("Max retries reached, stopping fetch attempts");
-          setIsLoading(false);
+      if ((isNetworkError || isResourceError) && retryCount < maxRetries) {
+        // Implement exponential backoff for retries
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.log(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms`);
+        
+        // Clear any existing timeout
+        if (fetchTimeoutRef.current) {
+          clearTimeout(fetchTimeoutRef.current);
         }
-        return;
+        
+        fetchTimeoutRef.current = setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          hasAttemptedFetch.current = false; // Reset the flag to allow another attempt
+          setIsLoading(false); // Allow retry on next render
+          fetchTimeoutRef.current = null;
+          console.log("Retry timeout executed, will attempt retry on next render");
+        }, delay);
+      } else {
+        // After max retries or for other errors, just stop trying
+        console.log("Max retries reached or non-retriable error, stopping fetch attempts");
+        
+        // Only show toast for non-network/resource errors
+        if (!isNetworkError && !isResourceError) {
+          toast({
+            title: "Erro",
+            description: "Não foi possível verificar pendências",
+            variant: "destructive",
+          });
+        }
+        
+        setIsLoading(false);
       }
-      
-      // For other errors, show toast but don't continuously retry
-      toast({
-        title: "Erro",
-        description: "Não foi possível verificar pendências",
-        variant: "destructive",
-      });
-      setIsLoading(false);
     }
   }, [getPendingActionPlans, user, isLoading, retryCount]);
 
   useEffect(() => {
-    // Check for pending plans on component mount only
-    if (user && !isLoading && !hasAttemptedFetch.current) {
-      fetchPlans();
-    }
+    // Disable the automatic check for pending plans
+    // This will prevent the infinite loop by default
+    // We'll only check if explicitly instructed via button click later
     
     return () => {
       // Clean up any pending timeouts on unmount
@@ -100,7 +107,17 @@ export function PendingNotification() {
         clearTimeout(fetchTimeoutRef.current);
       }
     };
-  }, [fetchPlans, user, isLoading]);
+  }, []);
+
+  // Add a manual check function that can be triggered by user action
+  const handleManualCheck = () => {
+    // Reset state for a fresh check
+    hasAttemptedFetch.current = false;
+    setRetryCount(0);
+    
+    // Trigger the fetch
+    fetchPlans();
+  };
 
   const handleCloseAlert = () => {
     setShowNotification(false);
