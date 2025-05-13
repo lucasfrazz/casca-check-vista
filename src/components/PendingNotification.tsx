@@ -16,6 +16,7 @@ export function PendingNotification() {
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
   const hasAttemptedFetch = useRef(false);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use memoized callback to prevent re-creation on each render
   const fetchPlans = useCallback(async () => {
@@ -44,35 +45,45 @@ export function PendingNotification() {
     } catch (error) {
       console.error("Error fetching pending action plans:", error);
       
-      // Don't show toast for network errors as they're expected during initial load
-      // or resource errors which need retry logic
+      // Check for resource errors specifically
       const isNetworkError = error instanceof TypeError && 
         (error.message.includes('fetch') || error.message.includes('network'));
       
       const isResourceError = error instanceof Error && 
-        error.message.includes('ERR_INSUFFICIENT_RESOURCES');
+        (error.message.includes('ERR_INSUFFICIENT_RESOURCES') || 
+         (error.toString && error.toString().includes('ERR_INSUFFICIENT_RESOURCES')));
       
       if (isNetworkError || isResourceError) {
         if (retryCount < maxRetries) {
           // Implement exponential backoff for retries
           const delay = Math.pow(2, retryCount) * 1000;
           console.log(`Retry ${retryCount + 1}/${maxRetries} after ${delay}ms`);
-          setTimeout(() => {
+          
+          // Clear any existing timeout
+          if (fetchTimeoutRef.current) {
+            clearTimeout(fetchTimeoutRef.current);
+          }
+          
+          fetchTimeoutRef.current = setTimeout(() => {
             setRetryCount(prev => prev + 1);
             hasAttemptedFetch.current = false; // Reset the flag to allow another attempt
             setIsLoading(false); // Allow retry on next render
+            fetchTimeoutRef.current = null;
           }, delay);
+        } else {
+          // After max retries, just stop trying to prevent reload loops
+          console.warn("Max retries reached, stopping fetch attempts");
+          setIsLoading(false);
         }
         return;
       }
       
-      // For other errors, show toast
+      // For other errors, show toast but don't continuously retry
       toast({
         title: "Erro",
         description: "Não foi possível verificar pendências",
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   }, [getPendingActionPlans, user, isLoading, retryCount]);
@@ -84,7 +95,10 @@ export function PendingNotification() {
     }
     
     return () => {
-      // Cleanup if needed
+      // Clean up any pending timeouts on unmount
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
     };
   }, [fetchPlans, user, isLoading]);
 
